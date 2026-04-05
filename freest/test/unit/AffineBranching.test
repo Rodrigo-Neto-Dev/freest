@@ -1,0 +1,39 @@
+-- Affine discipline in all control-flow branches
+
+-- VALID: both branches consume s
+{s : **!Int, b : Bool} |-
+  if b
+  then (sendA 0 s; drop s)
+  else drop s
+  : ()
+
+-- INVALID: True branch drops, False branch ignores
+{s : **!Int, b : Bool} |-
+  if b then drop s else ()
+  : ()   -- ERROR: s not consumed in else
+
+-- INVALID: True branch sends (not dropped), False branch drops
+{s : **!Int, b : Bool} |-
+  if b then sendA 0 s else drop s
+  : ()   -- ERROR: s not consumed after sendA in then
+
+-- VALID: case expression covers all arms
+{s : **!Int, x : Maybe Int} |-
+  case x of
+    Nothing -> drop s
+    Just _  -> sendA 0 s; drop s
+  : ()
+
+-- INVALID: one case arm forgets s
+{s : **!Int, x : Maybe Int} |-
+  case x of
+    Nothing -> ()
+    Just _  -> drop s
+  : ()   -- ERROR: s not consumed in Nothing arm
+
+-- VALID: nested branching, all paths consume s
+{s : **!Int, a : Bool, b : Bool} |-
+  if a
+  then (if b then drop s else drop s)
+  else drop s
+  : ()

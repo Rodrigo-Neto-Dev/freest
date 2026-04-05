@@ -1,0 +1,28 @@
+-- Affine discipline in higher-order functions
+
+-- VALID: function that drops its sender argument
+-- applyDrop : (**!Int -> ()) -> **!Int -> ()
+-- applyDrop f s = f s
+wellTyped applyDrop : (**!Int -> ()) -> **!Int -> ()
+
+-- INVALID: function applies f to s twice
+-- applyTwice : (**!Int -> ()) -> **!Int -> ()
+-- applyTwice f s = f s; f s
+illTyped applyTwice : (**!Int -> ()) -> **!Int -> ()
+
+-- VALID: function takes two independent senders
+-- sendBoth : **!Int -> **!Int -> ()
+-- sendBoth s1 s2 = sendA 1 s1; drop s1; sendA 2 s2; drop s2
+wellTyped sendBoth : **!Int -> **!Int -> ()
+
+-- INVALID: function stores sender in closure and uses twice
+-- storeSend : **!Int -> () -> ()
+-- storeSend s = \() -> (sendA 0 s; drop s)
+-- (calling the closure twice would duplicate s)
+illTyped (closure reuse) : **!Int -> () -> ()
+
+-- VALID: callback receives cloned senders separately
+-- cloneAndApply : (**!Int -> ()) -> (**!Int -> ()) -> **!Int -> ()
+-- cloneAndApply f g s =
+--   let (s1, s2) = clone s in f s1; g s2
+wellTyped cloneAndApply : (**!Int -> ()) -> (**!Int -> ()) -> **!Int -> ()

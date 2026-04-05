@@ -1,0 +1,22 @@
+-- Each rule tested independently
+
+-- VALID: sender consumed by sendA
+{s : **!Int} |- sendA 0 s; drop s : ()
+
+-- VALID: sender consumed by drop
+{s : **!Int} |- drop s : ()
+
+-- VALID: sender consumed by clone (both halves dropped)
+{s : **!Int} |- let (s1, s2) = clone s in drop s1; drop s2 : ()
+
+-- INVALID: sender not consumed
+{s : **!Int} |- () : ()   -- ERROR
+
+-- INVALID: sender used after drop
+{s : **!Int} |- drop s; sendA 0 s : ()   -- ERROR
+
+-- INVALID: sender used after sendA without drop
+{s : **!Int} |- sendA 0 s; sendA 1 s : ()   -- ERROR
+
+-- VALID: sendA does not consume sender (sender still live)
+{s : **!Int} |- sendA 0 s; drop s : ()

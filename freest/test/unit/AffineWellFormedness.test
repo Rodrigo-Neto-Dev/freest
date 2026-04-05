@@ -1,0 +1,25 @@
+-- Well-formedness of affine channel types
+
+-- VALID
+**!Int
+
+-- VALID
+**?Int
+
+-- VALID: affine sender of affine sender
+**!(**!Int)
+
+-- VALID: affine sender of linear session type
+**!(!Int;End)
+
+-- VALID: affine receiver of pair
+**?(Int, Bool)
+
+-- INVALID: affine receiver on left of clone
+clone : **?Int -> (**?Int, **?Int)
+
+-- INVALID: affine sender used as unrestricted
+un **!Int
+
+-- INVALID: affine receiver used as unrestricted
+un **?Int
