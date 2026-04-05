@@ -1,0 +1,26 @@
+-- drop: weakening
+
+-- VALID: drop consumes sender
+{s : **!Int} |- drop s : ()
+
+-- INVALID: drop applied to receiver
+{r : **?Int} |- drop r : ()   -- ERROR
+
+-- INVALID: double drop
+{s : **!Int} |- drop s; drop s : ()   -- ERROR
+
+-- INVALID: drop then sendA
+{s : **!Int} |- drop s; sendA 0 s : ()   -- ERROR
+
+-- INVALID: drop then clone
+{s : **!Int} |- drop s; clone s : ()   -- ERROR
+
+-- VALID: drop in every branch
+{s : **!Int, b : Bool} |-
+  if b then drop s else drop s
+  : ()
+
+-- INVALID: drop in only one branch
+{s : **!Int, b : Bool} |-
+  if b then drop s else ()
+  : ()   -- ERROR
