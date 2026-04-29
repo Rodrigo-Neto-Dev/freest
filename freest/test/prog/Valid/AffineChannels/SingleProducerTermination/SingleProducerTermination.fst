@@ -1,4 +1,4 @@
-fstmodule SingleProducerTermination
+module SingleProducerTermination where
 
 main : ()
 main =

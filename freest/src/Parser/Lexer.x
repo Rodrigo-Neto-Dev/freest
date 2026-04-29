@@ -101,6 +101,8 @@ $upper = [ A-Z ]
 <0> "-."  { token TkMinusDot }
 <0> "*"   { token TkStar }
 <0> "*."  { token TkStarDot }
+<0> "**!" { token TkStarStarBang }
+<0> "**?" { token TkStarStarQuestion }
 <0> "**"  { token TkStarStar }
 <0> "/"   { token TkSlash }
 <0> "/."  { token TkSlashDot }

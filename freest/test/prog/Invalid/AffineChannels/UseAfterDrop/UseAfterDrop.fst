@@ -1,8 +1,7 @@
-fstmodule UseAfterDrop
+module UseAfterDrop where
 
--- Error: s used after drop
 main : ()
 main =
-  let (s, r) = newA in
-  drop s;
-  sendA 99 s
+  let (rx, wx) = new @**!Int () in
+  drop wx ;
+  sendA 1 wx   -- Error: wx not in scope

@@ -1,9 +1,8 @@
-fstmodule CloneReceiver
+module CloneReceiver where
 
--- Error: clone is not defined for **?T
 main : ()
 main =
-  let (s, r) = newA in
-  drop s;
-  let (r1, r2) = clone r in
+  let (rx, wx) = new @**!Int () in
+  drop wx ;
+  let (rx1, rx2) = clone rx in  -- Error: clone not defined for **?Int
   ()

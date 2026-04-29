@@ -1,4 +1,4 @@
-fstmodule RecursiveSend
+module RecursiveSend where
 
 sendDown : Int -> **!Int -> ()
 sendDown 0 s = drop s
