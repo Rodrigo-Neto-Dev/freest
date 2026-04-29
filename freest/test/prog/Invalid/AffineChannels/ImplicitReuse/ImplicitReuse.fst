@@ -1,12 +1,7 @@
-fstmodule ImplicitReuse
+module RecursiveReuseWithoutClone where
 
--- Error: recursive reuse of s without clone
+-- Error: wx implicitly reused across recursive call
 loop : **!Int -> ()
-loop s =
-  sendA 0 s;
-  loop s
-
-main : ()
-main =
-  let (s, r) = newA in
-  loop s
+loop c =
+  sendA 0 c ;
+  loop c   -- Error: c not in scope (consumed by first sendA iteration)

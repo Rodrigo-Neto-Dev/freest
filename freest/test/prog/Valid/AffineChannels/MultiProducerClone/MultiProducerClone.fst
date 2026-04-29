@@ -1,4 +1,4 @@
-fstmodule MultiProducerClone
+module MultiProducerClone where
 
 collectAll : **?Int -> ()
 collectAll r =

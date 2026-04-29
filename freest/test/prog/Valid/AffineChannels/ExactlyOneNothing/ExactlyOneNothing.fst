@@ -1,4 +1,4 @@
-fstmodule ExactlyOneNothing
+module ExactlyOneNothing where
 
 -- Counts Nothings; must be exactly 1
 countNothing : **?Int -> Int -> Int

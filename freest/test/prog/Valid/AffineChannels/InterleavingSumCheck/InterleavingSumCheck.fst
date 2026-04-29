@@ -1,4 +1,4 @@
-fstmodule InterleavingSumCheck
+module InterleavingSumCheck where
 
 -- Order nondeterministic; verify sum == 15
 sumAll : **?Int -> Int -> Int

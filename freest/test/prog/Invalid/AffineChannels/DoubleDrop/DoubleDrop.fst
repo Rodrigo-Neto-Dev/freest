@@ -1,8 +1,7 @@
-fstmodule DoubleDrop
+module DoubleDrop where
 
--- Error: s dropped twice
 main : ()
 main =
-  let (s, r) = newA in
-  drop s;
-  drop s
+  let (rx, wx) = new @**!Int () in
+  drop wx ;
+  drop wx   -- Error: wx not in scope

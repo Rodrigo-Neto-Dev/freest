@@ -29,6 +29,8 @@ module Syntax.Type.Internal
         , Bool
         , AppDName
         , AppVar
+        , AffineSender
+        , AffineReceiver
         )
   , smartApp
   , Dual(..)
@@ -47,6 +49,8 @@ module Syntax.Type.Internal
   , isAppLinChoice
   , isAppQuant
   , isAppDName
+  , isAffineSender
+  , isAffineReceiver
   , fromVariable
   , existsMult
   )
@@ -92,6 +96,9 @@ data Type x
   | Choice Span (XType x) K.Multiplicity Polarity [Identifier]
   | Semi Span (XType x)
   | Dual Span (XType x)
+  -- Affine channels
+  | AffineSenderOp Span (XType x)
+  | AffineReceiverOp Span (XType x)
   --   Equations
   | TName Span (XType x) Identifier
   | DName Span (XType x) Identifier
@@ -162,6 +169,14 @@ pattern AppDual :: Span -> XType x -> XType x -> Type x -> Type x
 pattern AppDual s x1 x2 t <- App s x1 (Dual _ x2) [t]
   where AppDual s x1 x2 t  = App s x1 (Dual s x2) [t]
 
+pattern AffineSender :: Span -> XType x -> XType x -> Type x -> Type x
+pattern AffineSender s x1 x2 t <- App s x1 (AffineSenderOp _ x2) [t]
+  where AffineSender s x1 x2 t  = App s x1 (AffineSenderOp s x2) [t]
+
+pattern AffineReceiver :: Span -> XType x -> XType x -> Type x -> Type x
+pattern AffineReceiver s x1 x2 t <- App s x1 (AffineReceiverOp _ x2) [t]
+  where AffineReceiver s x1 x2 t  = App s x1 (AffineReceiverOp s x2) [t]
+
 pattern AppTName :: Span -> XType x -> XType x -> Identifier -> [Type x] -> Type x
 pattern AppTName s x1 x2 i ts <- (\case TName s x1 i            -> App s x1 (TName s x1 i) []
                                         App s x1 (TName _ x2 i) ts -> App s x1 (TName s x2 i) ts
@@ -223,7 +238,7 @@ isConstant = \case
   App{}   -> False
   _       -> True
 
-isSkip, isVoid, isSemi, isAppSemi, isDual, isTName, isDName, isMsg, isAppQuantS, isUnChoice, isAppArrow, isAppLinChoice, isAppQuant, isAppDName :: Type x -> Bool
+isSkip, isVoid, isSemi, isAppSemi, isDual, isTName, isDName, isMsg, isAppQuantS, isUnChoice, isAppArrow, isAppLinChoice, isAppQuant, isAppDName, isAffineSender, isAffineReceiver :: Type x -> Bool
 isSkip         = \case Skip{}         -> True; _ -> False
 isVoid         = \case Void{}         -> True; _ -> False
 isSemi         = \case Semi{}         -> True; _ -> False
@@ -238,6 +253,8 @@ isAppArrow     = \case AppArrow{}     -> True; _ -> False
 isAppLinChoice = \case AppLinChoice{} -> True; _ -> False
 isAppQuant     = \case AppQuant{}     -> True; _ -> False
 isAppDName     = \case AppDName{}     -> True; _ -> False
+isAffineSender = \case AffineSender{} -> True; _ -> False
+isAffineReceiver = \case AffineReceiver{} -> True; _ -> False
 
 fromVariable :: VarLv -> Variable -> XType x -> Type x
 fromVariable vl a x = Var (varSpan a) x vl a
@@ -275,13 +292,16 @@ instance Show (Type x) where
       (case m  of K.Un{} -> "*"; _ -> "")
       ++ showView p ++ "{" ++ intercalate ", " (map show ls) ++ "}"
     AppMessage _ _ _ m p t  -> showMsgMult m ++ show p ++ show t
-    AppQuantS _ _ _ _ p a k t -> 
+    AppQuantS _ _ _ _ p a k t ->
       "(" ++ show p ++ show p ++ "(" ++ show a ++ " : " ++ show k ++ "). "
       ++ show t ++ ")"
     AppLinChoice  _ _ _ p lts -> showView p ++ "{"
       ++ intercalate ", " (map showField lts)
       ++ "}"
       where showField (l, t) = show l ++ ": " ++ show t
+    -- Affine channel types
+    AffineSender _ _ _ t   -> "**!" ++ show t
+    AffineReceiver _ _ _ t -> "**?" ++ show t
     -- Polymorphism
     AppQuant _ _ _ _ p K.Top m aks t -> "(" ++ showQuant p ++ " " ++ showAbs aks  ((if p == In then " -" ++ show m else "") ++ "-> ") t ++ ")"
     -- Higher-order
@@ -357,6 +377,9 @@ instance Located (Type x) where
     Skip s _         -> s
     Semi s _         -> s
     Dual s _         -> s
+    -- Affine channel types
+    AffineSenderOp s _   -> s
+    AffineReceiverOp s _ -> s
     -- Polymorphism
     Quant s _ _ _ _ -> s
     ForallM s _ _ _ _ -> s
@@ -385,6 +408,9 @@ instance Located (Type x) where
     Skip _ x          -> Skip s x
     Semi _ x          -> Semi s x
     Dual _ x          -> Dual s x
+    -- Affine channel types
+    AffineSenderOp _ t   -> AffineSenderOp s t
+    AffineReceiverOp _ t -> AffineReceiverOp s t
     -- Higher-order
     Var _ x xv a       -> Var s x xv a
     Abs _ x aks t      -> Abs s x aks t

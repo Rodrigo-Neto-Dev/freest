@@ -1,15 +1,14 @@
-fstmodule ReceiverDuplication
+module ReceiverUsedDuplication where
 
-consume : **?Int -> ()
-consume r =
-  case receiveA r of
-    Nothing -> ()
-    Just (_, r') -> consume r'
+sumInts : **?Int -> Int
+sumInts c = case receiveA c of
+  Nothing     -> 0
+  Just (n, c) -> n + sumInts c
 
--- Error: r passed to consume twice
 main : ()
 main =
-  let (s, r) = newA in
-  drop s;
-  consume r;
-  consume r
+  let (rx, wx) = new @**!Int () in
+  drop wx ;
+  let _ = sumInts rx in
+  let _ = sumInts rx in  -- Error: rx not in scope
+  ()

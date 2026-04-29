@@ -9,7 +9,7 @@ the tokens output by the lexer.
 -}
 module Parser.Token where 
 
-import Syntax.Base  
+import Syntax.Base
 import Data.List ( intercalate )
 
 data Token
@@ -37,8 +37,8 @@ data Token
   | TkLParen Span | TkRParen Span | TkLSquare Span | TkRSquare Span
   | TkEqual Span | TkColon Span
   | TkBackslash Span
-  | TkArrow Span | TkArrowButt Span | TkArrowHead Span
-  | TkDot Span | TkAt Span | TkHash Span | TkComma Span
+  | TkArrow Span | TkUnArrow Span | TkLinArrow Span
+  | TkDot Span | TkAt Span | TkComma Span
   -- Operators
   | TkSemi Span | TkColonColon Span
   | TkDollar Span | TkPipeGT Span
@@ -57,7 +57,9 @@ data Token
   | TkBang Span | TkQuestion Span | TkAmp Span
   | TkSkipType Span | TkDualType Span | TkCloseType Span | TkWaitType Span
   | TkVoidType Span
-  -- Prekinds 
+  -- Affine channel types
+    | TkStarStarBang Span | TkStarStarQuestion Span
+  -- Prekinds
   | TkTopPrekind Span | TkSessionPrekind Span | TkChannelPrekind Span
   deriving (Eq, Show)
 
@@ -143,7 +145,9 @@ instance Located Token where
     TkMinus s -> s
     TkMinusDot s -> s
     TkStar s -> s
-    TkStarStar s -> s 
+    TkStarStar s -> s
+    TkStarStarBang s -> s
+    TkStarStarQuestion s -> s
     TkStarDot s -> s
     TkSlash s -> s
     TkSlashDot s -> s

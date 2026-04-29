@@ -35,6 +35,8 @@ module Syntax.Type.Unkinded
   , pattern List
   , pattern Bool
   , pattern AppDName
+  , pattern AffineSender
+  , pattern AffineReceiver
   , pattern AppVar
   , T.Polarity(..)
   , T.smartApp
@@ -54,6 +56,8 @@ module Syntax.Type.Unkinded
   , T.isAppLinChoice
   , T.isAppQuant
   , T.isAppDName
+  , T.isAffineSender
+  , T.isAffineReceiver
   , T.fromVariable
   , T.existsMult
   )
@@ -209,6 +213,14 @@ pattern List s t <- T.List s _ _ t
 pattern Bool :: Unkinded x => Span -> T.Type x
 pattern Bool s <- T.Bool s _
   where Bool s = T.Bool s void
+
+pattern AffineSender :: Unkinded x => Span -> T.Type x -> T.Type x
+pattern AffineSender s t <- T.AffineSender s _ _ t
+  where AffineSender s t = T.AffineSender s void void t
+
+pattern AffineReceiver :: Unkinded x => Span -> T.Type x -> T.Type x
+pattern AffineReceiver s t <- T.AffineReceiver s _ _ t
+  where AffineReceiver s t = T.AffineReceiver s void void t
 
 fromVariable :: Unkinded x => Variable -> T.Type x
 fromVariable a = T.Var (varSpan a) void ObjLv a
