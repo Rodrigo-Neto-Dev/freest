@@ -1,11 +1,14 @@
-fstmodule ImplicitDuplication
+module ImplicitDuplication where
 
-consume : **!Int -> ()
-consume s = sendA 0 s; drop s
+sendInts : Int -> **!Int -> ()
+sendInts 0 c = drop c
+sendInts n c =
+  sendA n c ;
+  sendInts (n - 1) c
 
--- Error: s passed to consume twice without clone
 main : ()
 main =
-  let (s, r) = newA in
-  consume s;
-  consume s
+  let (rx, wx) = new @**!Int () in
+  fork (\_ -> sendInts 10 wx) ;
+  fork (\_ -> sendInts 10 wx) ;  -- Error: wx not in scope (already consumed)
+  ()

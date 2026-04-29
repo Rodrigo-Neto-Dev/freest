@@ -1,4 +1,4 @@
-fstmodule RecursiveCloneProducers
+module RecursiveCloneProducers where
 
 -- Recursively clone and send; each level sends one value
 fanSend : Int -> Int -> **!Int -> ()

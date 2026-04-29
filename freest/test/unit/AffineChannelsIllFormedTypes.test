@@ -1,0 +1,15 @@
+-- clone is not defined for receiver side (negative tests)
+-- These must be ill-formed / ill-kinded
+
+-- Receiver side cannot appear as clone argument
+-- clone : **?Int -> (**?Int, **?Int)   -- ill-typed: clone only defined for **!a
+
+-- Affine sender cannot be used as unrestricted (*C)
+-- **!Int cannot inhabit *C
+
+-- Affine types are not session types
+-- **!Int is not of kind 1S — cannot appear where 1S expected
+-- **?Int is not of kind 1S
+
+-- Affine receiver is not a shared channel
+-- **?Int ≠ *?Int

@@ -119,6 +119,8 @@ import Data.List ( sortBy )
   '-.'    { TkMinusDot _ }
   '*'     { TkStar _ }
   '**'    { TkStarStar _ }
+  '**!'   { TkStarStarBang _ }
+  '**?'   { TkStarStarQuestion _ }
   '*.'    { TkStarDot _ }
   '/'     { TkSlash _ }
   '/.'    { TkSlashDot _ }
@@ -337,6 +339,9 @@ TypePrimary :: { T.ParsedType }
   -- Choices
   | View '{' LabelTypeListComma '}'     { T.AppLinChoice (spanFromTo (fst $1) $4) (snd $1) $3 } -- sorted by AppLinChoice
   | '*' View '{' LabelListComma '}'     { T.UnChoice (spanFromTo $1 $5) (snd $2) $4 }       -- sorted by UnChoice
+  -- Affine channel types
+  | '**!' TypePrimary %prec MSG { T.AffineSender (spanFromTo $1 $2) $2 }
+  | '**?' TypePrimary %prec MSG { T.AffineReceiver (spanFromTo $1 $2) $2 }
   -- Variables and constructors
   | Identifier { T.TName (getSpan $1) $1 }
   | TypeVar { T.Var (getSpan $1) $1 }

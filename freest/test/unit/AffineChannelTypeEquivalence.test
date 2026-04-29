@@ -1,0 +1,22 @@
+-- **!T and **?T are NOT equivalent to each other
+-- **!Int ≁ **?Int
+
+-- **!Int is NOT equivalent to *!Int (shared sender)
+-- **!Int ≁ *!Int
+
+-- **!Int is NOT equivalent to !Int (linear session send)
+-- **!Int ≁ !Int;End
+
+-- **?Int is NOT equivalent to *?Int
+-- **?Int ≁ *?Int
+
+-- **?Int is NOT equivalent to ?Int;End
+-- **?Int ≁ ?Int;End
+
+-- **!T is NOT equivalent to **!U when T ≁ U
+-- **!Int ≁ **!Char
+
+-- Covariance: **!T ≡ **!U when T ≡ U (reflexivity)
+-- **!Int ≡ **!Int
+
+-- **?Int ≡ **?Int

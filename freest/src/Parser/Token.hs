@@ -9,7 +9,7 @@ the tokens output by the lexer.
 -}
 module Parser.Token where 
 
-import Syntax.Base  
+import Syntax.Base
 import Data.List ( intercalate )
 
 data Token
@@ -57,7 +57,7 @@ data Token
   | TkBang Span | TkQuestion Span | TkAmp Span
   | TkSkipType Span | TkDualType Span | TkCloseType Span | TkWaitType Span
   | TkVoidType Span
-  -- Prekinds 
+  -- Prekinds
   | TkTopPrekind Span | TkSessionPrekind Span | TkChannelPrekind Span
   deriving (Eq, Show)
 
@@ -143,7 +143,9 @@ instance Located Token where
     TkMinus s -> s
     TkMinusDot s -> s
     TkStar s -> s
-    TkStarStar s -> s 
+    TkStarStar s -> s
+    TkStarStarBang s -> s
+    TkStarStarQuestion s -> s
     TkStarDot s -> s
     TkSlash s -> s
     TkSlashDot s -> s
@@ -237,6 +239,8 @@ instance Located Token where
     TkMinusDot _ -> TkMinusDot s
     TkStar _ -> TkStar s
     TkStarStar _ -> TkStarStar s
+    TkStarStarBang _ -> TkStarStarBang s
+    TkStarStarQuestion _ -> TkStarStarQuestion s
     TkStarDot _ -> TkStarDot s
     TkSlash _ -> TkSlash s
     TkSlashDot _ -> TkSlashDot s

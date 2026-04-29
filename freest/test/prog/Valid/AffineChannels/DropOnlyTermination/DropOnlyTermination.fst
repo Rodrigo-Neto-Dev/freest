@@ -1,10 +1,9 @@
-fstmodule DropOnlyTermination
+module DropOnlyTermination where
 
--- No messages sent; channel closed immediately
 main : ()
 main =
-  let (s, r) = newA in
-  drop s;
-  case receiveA r of
-    Nothing -> print "closed"
+  let (rx, wx) = new @**!Int () in
+  drop wx ;
+  case receiveA rx of
+    Nothing   -> print "closed"
     Just (_, _) -> ()

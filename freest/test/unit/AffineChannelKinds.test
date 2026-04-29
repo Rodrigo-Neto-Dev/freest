@@ -1,0 +1,28 @@
+-- Affine sender is a linear type (1T)
+
+case **!Int : 1T
+
+case **?Int : 1T
+
+case **!Char : 1T
+
+case **?Char : 1T
+
+case **!() : 1T
+
+case **?(Int, Char) : 1T
+
+-- Affine channel carrying a session type payload
+case **!(!Int;Skip) : 1T
+
+-- Affine sender of affine sender (nested)
+case **!(**!Int) : 1T
+
+-- Affine channel of unrestricted type
+case **!Int : 1T
+
+-- Affine channel of linear function
+case **!(Int 1-> Char) : 1T
+
+-- Affine sender is NOT unrestricted
+-- (no case X : *T for **!Int — it must not be well-kinded as *T)
