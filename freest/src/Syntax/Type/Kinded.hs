@@ -33,6 +33,8 @@ module Syntax.Type.Kinded
   , pattern Tuple
   , pattern List
   , pattern Bool
+  , pattern AffineSender
+  , pattern AffineReceiver
   , pattern AppDName
   , pattern AppVar
   , T.Polarity(..)
@@ -53,6 +55,8 @@ module Syntax.Type.Kinded
   , T.isAppLinChoice
   , T.isAppQuant
   , T.isAppDName
+  , T.isAffineSender
+  , T.isAffineReceiver
   , kindOf
   , isProper
   , smartApp
@@ -248,6 +252,14 @@ pattern Bool :: Span -> KindedType
 pattern Bool s <- T.Bool s _
   where Bool s = DName s (K.ut s) (mkBoolId s)
 
+pattern AffineSender :: Span -> KindedType -> KindedType
+pattern AffineSender s t <- T.AffineSender s _ _ t
+  where AffineSender s t = T.AffineSender s (K.lc s) (K.lc s) t
+
+pattern AffineReceiver :: Span -> KindedType -> KindedType
+pattern AffineReceiver s t <- T.AffineReceiver s _ _ t
+  where AffineReceiver s t = T.AffineReceiver s (K.lc s) (K.lc s) t
+
 kindOf :: KindedType -> K.Kind
 kindOf = \case 
   T.Int _ k -> k
@@ -268,6 +280,8 @@ kindOf = \case
   T.TName _ k _ -> k
   T.DName _ k _ -> k
   T.Void _ k _ -> k
+  T.AffineSender _ k _ _ -> k
+  T.AffineReceiver _ k _ _ -> k
 
 isProper :: KindedType -> Bool
 isProper = K.isProper . kindOf

@@ -586,6 +586,10 @@ scopeType ctx = \case
   T.App s t ts ->
     T.App s <$> scopeType ctx t <*> mapM (scopeType ctx) ts
 
+  -- Affine Channels
+  T.AffineSender s t -> T.AffineSender s <$> scopeType ctx t
+  T.AffineReceiver s t -> T.AffineReceiver s <$> scopeType ctx t
+
 -- | Scope a type, universally quantifying any free variables it might have
 -- with a fresh kind inference variable.
 scopeAndQuantifyType :: ScopingCtx -> T.ParsedType -> Validation T.ScopedType
