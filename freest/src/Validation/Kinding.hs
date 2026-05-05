@@ -127,6 +127,15 @@ synth modl ctx = \case
   T.Abs s aks t -> do
     TK.Abs s aks <$> synth modl (Map.fromList aks `Map.union` ctx) t
 
+  -- Affine channel types
+  T.AffineSender s t -> do
+    (_, _, t') <- checkProper modl ctx t        -- payload must be a proper type
+    return $ TK.AffineSender s t'               -- result kind is 1C (built into the pattern)
+
+  T.AffineReceiver s t -> do
+    (_, _, t') <- checkProper modl ctx t
+    return $ TK.AffineReceiver s t'
+
 -- | Check a type against a given kind.
 check :: M.ScopedModule -> KindCtx -> T.ScopedType -> Kind -> Validation TK.KindedType
 check ctx mod t k = do

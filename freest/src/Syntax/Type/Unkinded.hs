@@ -33,9 +33,9 @@ module Syntax.Type.Unkinded
   , pattern Tuple
   , pattern List
   , pattern Bool
-  , pattern AppDName
   , pattern AffineSender
   , pattern AffineReceiver
+  , pattern AppDName
   , pattern AppVar
   , T.Polarity(..)
   , T.smartApp
@@ -55,9 +55,9 @@ module Syntax.Type.Unkinded
   , T.isAppLinChoice
   , T.isAppQuant
   , T.isAppDName
+  , T.fromVariable
   , T.isAffineSender
   , T.isAffineReceiver
-  , T.fromVariable
   )
 where
 

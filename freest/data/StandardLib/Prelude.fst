@@ -399,6 +399,21 @@ repeat @a n thunk =
 -- parallel : forall (a : *T) . Int -> (() -> a) -> ()
 -- parallel @a n thunk = repeat @() n (\(_ : ()) -> fork @a thunk)
 
+
+-- Affine Channels
+
+sendA : forall (a : *T) . a -> **!a 1-> **!a
+sendA = undefined @(forall (a : *T) . a -> **!a 1-> **!a)
+
+receiveA : forall (a : *T) . **?a 1-> Maybe (a, **?a)
+receiveA = undefined @(forall (a : *T) . **?a 1-> Maybe (a, **?a))
+
+clone : forall (a : *T) . **!a 1-> (**!a, **!a)
+clone = undefined @(forall (a : *T) . **!a 1-> (**!a, **!a))
+
+drop : forall (a : *T) . **!a 1-> ()
+drop = undefined @(forall (a : *T) . **!a 1-> ())
+
 -- * I/O
 
 -- ** I/O Streams
