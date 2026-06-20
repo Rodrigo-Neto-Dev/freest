@@ -4,15 +4,15 @@ module FixPointAlt where
 -- used to calculate the factorial of 8
 
 -- This is the Y-combinator. It never halts in a strict language
--- fix' : forall a . ((a -> a) -> (a -> a)) -> (a -> a)
+-- fix' : forall a  -> ((a -> a) -> (a -> a)) -> (a -> a)
 -- fix' f = f (fix' @a f) 
 
-fix' : forall (a : *T). ((a -> a) -> (a -> a)) -> a -> a
-fix' @a f x = f (fix' @a f) x
+fix' : forall (a : *T) -> ((a -> a) -> (a -> a)) -> a -> a
+fix' @a f x = f (fix' f) x
 
 fact : Int -> Int
-fact = fix'  @Int (\(f : Int -> Int) -> (\(n : Int) ->
+fact = fix' (\(f : Int -> Int) -> (\(n : Int) ->
   if n == 0 then 1 else n * f (n - 1)))
 
-main : Int
-main = fact 5
+main : ()
+main = print (fact 5)

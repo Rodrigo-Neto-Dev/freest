@@ -9,7 +9,7 @@ Church Encoding _ Natural Numbers
 module SystemFNats where
 
 type Nat : *T
-type Nat = forall (a : *T) . (a -> a) -> a -> a
+type Nat = forall (a : *T) -> (a -> a) -> a -> a
 
 zero : Nat 
 zero = \@(a : *T) (s : a -> a) (z : a) -> z
@@ -68,9 +68,5 @@ three @a s z = s (s (s z))
 
 four = succ' three
 
-main : Int
-main = toInt $ pred' $ plus one three
--- main = toInt $ exp two $ times four four
-
--- main : Bool
--- main = isZero $ plus three four
+main : ()
+main = print $ toInt $ pred' $ plus one three

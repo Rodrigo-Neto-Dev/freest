@@ -31,7 +31,7 @@ client c = c |> select Const
              |> select Mult
              |> select Add 
              |> select EOS
-             |> receiveAndClose @Int
+             |> receiveAndClose
 
 {-|
   An arithmetic stream evaluator.
@@ -60,7 +60,7 @@ head2 l =
       Nil -> ((n, err), Nil)  -- Error: Empty stack on add/mult (right operand)
       Cons m l -> ((n, m), l)
 
-evaluate : StreamServer -> IntList 1-> ()
+evaluate : StreamServer -> IntList -1-> ()
 evaluate s l =
   case s of
     &Const s -> let (n, s) = receive s in evaluate s (Cons n l)
@@ -70,8 +70,8 @@ evaluate s l =
 
 -- A sample interaction: evaluating an arithmetic expression;
 -- expect 26 on the console.
-main : Int
+main : ()
 main =
   let (c, s) = channel @StreamClient in
-  let _ = fork @() (\(_ : ()) 1-> evaluate s Nil) in
-  client c
+  let _ = fork (\(_ : ()) -1-> evaluate s Nil) in
+  print (client c)

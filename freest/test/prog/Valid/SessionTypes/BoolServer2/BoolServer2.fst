@@ -28,21 +28,21 @@ client1 : BoolClient -> Bool
 client1 w = w |> select And
               |> send True  
               |> send False 
-              |> receiveAndClose @Bool
+              |> receiveAndClose
 
 client2 : BoolClient -> Bool
 client2 w = w |> select Not
               |> send True
-              |> receiveAndClose @Bool 
+              |> receiveAndClose 
 
 startClient : (BoolClient -> Bool) -> Bool
 startClient client =
   let (w,r) = channel @BoolClient in
-  fork (\(_ : ()) 1-> boolServer r);
+  fork (\(_ : ()) -1-> boolServer r);
   client w
 
-main : Bool
+main : ()
 main =
   let c1 = startClient client1 in
   let c2 = startClient client2 in
-  c1 || c2
+  print (c1 || c2)

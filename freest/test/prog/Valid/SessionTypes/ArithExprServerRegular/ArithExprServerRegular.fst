@@ -33,14 +33,14 @@ client c = c |> select Const
              |> select Mult
              |> select Add
              |> select EOS
-             |> receiveAndWait @Int
+             |> receiveAndWait
 
 {-|
   An easy consumer: counts the number of nodes in the stream.  Copes
   with any stream, independent of the fact that it may or may not
   represent a well formed arithmetic expression.
 -}
-size : StreamServer -> Int 1-> ()
+size : StreamServer -> Int -1-> ()
 size s n =
   case s of
     &Add s   -> size s (n + 1)
@@ -50,8 +50,8 @@ size s n =
 
 -- A sample interaction: counting the number of nodes in a stream;
 -- expect 7 on the console.
-main : Int
+main : ()
 main =
   let (c, s) = channel @StreamClient in
-  fork (\(_:()) 1-> size s 0);
-  client c
+  fork (\(_:()) -1-> size s 0);
+  print (client c)

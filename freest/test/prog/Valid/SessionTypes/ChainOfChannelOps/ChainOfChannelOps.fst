@@ -11,12 +11,12 @@ g r =
       v + g r
     &Stop r -> wait r; 0
 
-main : Int
+main : ()
 main =
   let (w, r) = channel @T in
-  fork (\(_:()) 1-> 
+  fork (\(_:()) -1-> 
       w |> select More |> send 5 
         |> select More |> send 2 
         |> select Stop |> close
     );
-  g r
+  print (g r)

@@ -27,16 +27,13 @@ client1 : BoolClient -> Bool
 client1 w = w |> select And
               |> send True  
               |> send False
-              |> receiveAndClose @Bool 
+              |> receiveAndClose 
 
 startClient : (BoolClient -> Bool) -> Bool
 startClient client =
   let (w,r) = channel @BoolClient in
-  fork @() (\(_ : ()) 1-> boolServer r);
+  fork (\(_ : ()) -1-> boolServer r);
   client w
 
-main : Bool
-main = startClient client1
-
--- remove skips from the end
--- Type check : environment checks only the linear part (filter)
+main : ()
+main = print (startClient client1)

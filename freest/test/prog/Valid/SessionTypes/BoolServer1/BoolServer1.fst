@@ -28,11 +28,10 @@ client1 : BoolClient -> Bool
 client1 w = w |> select Or
               |> send True
               |> send False
-              |> receiveAndClose @Bool 
+              |> receiveAndClose 
 
-main : Bool
+main : ()
 main =
   let (w,r) = channel @BoolClient in
-  fork (\(_:()) 1-> boolServer r);
-  client1 w
-
+  fork (\(_:()) -1-> boolServer r);
+  print (client1 w)

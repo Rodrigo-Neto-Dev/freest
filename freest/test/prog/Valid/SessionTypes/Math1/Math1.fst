@@ -8,18 +8,19 @@ mathServer : MathServer -> ()
 mathServer c =
   case c of
     &Negate c ->
-      let (n, c) = receive c in
-      c |> send (-n) |> wait
+      let (n, c) = receive c
+      in c |> send (-n) |> wait
     &Add c ->
-      let (n1, c) = receive c in
-      let (n2, c) = receive c in
-      c |> send (n1 + n2) |> wait
+      let (n1, c) = receive c
+          (n2, c) = receive c
+      in c |> send (n1 + n2) |> wait
 
-main : Int
+main : ()
 main =
   let (w,r) = channel @MathClient in
-  fork (\(_ : ()) 1-> mathServer r);
+  fork (\(_ : ()) -1-> mathServer r);
   w |> select Add 
     |> send 5 
     |> send 18
-    |> receiveAndClose @Int
+    |> receiveAndClose
+    |> print

@@ -1,4 +1,4 @@
 module SemiAsSection where
 
-main : Int
-main = ((;) @Char @Int) 'a' 2
+main : ()
+main = print ((;) 'a' 2)
