@@ -1,6 +1,6 @@
 module PatternMatchReceive where
 
-sumInts : **?Int -> Int
+sumInts : **?Int 1-> Int
 sumInts c =
   case receiveA c of
     Nothing     -> 0
@@ -8,9 +8,8 @@ sumInts c =
 
 main : ()
 main =
-  let (rx, wx) = new @**!Int () in
-  sendA 10 wx ;
-  sendA 20 wx ;
-  sendA 30 wx ;
-  drop wx ;
+  let (rx, wx) = newA @Int () in
+  let wx1 = sendA 10 wx in
+  let wx2 = sendA 20 wx1 in
+  drop (sendA 30 wx2) ;
   print (sumInts rx)

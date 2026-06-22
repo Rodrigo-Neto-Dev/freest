@@ -1,15 +1,14 @@
 module RecursiveCloneProducers where
 
--- Recursively clone and send; each level sends one value
-fanSend : Int -> Int -> **!Int -> ()
+-- Recursively cloneAS and send; each level sends one value
+fanSend : Int -> Int -> **!Int 1-> ()
 fanSend 0 _ s = drop s
 fanSend n v s =
-  let (s1, s2) = clone s in
-  sendA v s1;
-  drop s1;
+  let (s1, s2) = cloneAS s in
+  drop (sendA v s1);
   fanSend (n - 1) (v + 1) s2
 
-collectAll : **?Int -> ()
+collectAll : **?Int 1-> ()
 collectAll r =
   case receiveA r of
     Nothing -> ()

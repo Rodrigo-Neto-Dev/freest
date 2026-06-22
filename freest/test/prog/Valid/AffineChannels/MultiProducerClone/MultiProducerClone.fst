@@ -1,6 +1,6 @@
 module MultiProducerClone where
 
-collectAll : **?Int -> ()
+collectAll : **?Int 1-> ()
 collectAll r =
   case receiveA r of
     Nothing -> ()
@@ -11,9 +11,7 @@ collectAll r =
 main : ()
 main =
   let (s, r) = newA in
-  let (s1, s2) = clone s in
-  sendA 10 s1;
-  drop s1;
-  sendA 20 s2;
-  drop s2;
+  let (s1, s2) = cloneAS s in
+  drop (sendA 10 s1);
+  drop (sendA 20 s2);
   collectAll r
