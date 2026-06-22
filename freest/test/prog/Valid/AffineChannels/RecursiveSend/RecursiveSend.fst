@@ -1,12 +1,11 @@
 module RecursiveSend where
 
-sendDown : Int -> **!Int -> ()
+sendDown : Int -> **!Int 1-> ()
 sendDown 0 s = drop s
 sendDown n s =
-  sendA n s;
-  sendDown (n - 1) s
+  sendDown (n - 1) (sendA n s)
 
-collectAll : **?Int -> ()
+collectAll : **?Int 1-> ()
 collectAll r =
   case receiveA r of
     Nothing -> ()

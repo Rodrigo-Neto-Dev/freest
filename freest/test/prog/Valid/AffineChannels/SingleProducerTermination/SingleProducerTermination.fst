@@ -3,10 +3,9 @@ module SingleProducerTermination where
 main : ()
 main =
   let (s, r) = newA in
-  sendA 1 s;
-  sendA 2 s;
-  sendA 3 s;
-  drop s;
+  let s1 = sendA 1 s in
+  let s2 = sendA 2 s1 in
+  drop (sendA 3 s2);
   case receiveA r of
     Nothing -> ()
     Just (x, r1) ->
