@@ -8,7 +8,7 @@ sendInts n c =
 
 main : ()
 main =
-  let (rx, wx) = new @**!Int () in
+  let (rx, wx) = newA @**!Int () in
   let b = True in
   if b
   then sendInts 3 wx

@@ -24,6 +24,8 @@ import Syntax.Base ( Variable )
 import Syntax.Expression ( KindedRHS, Pat )
 import Syntax.Type.Kinded ( KindedType )
 
+import Data.IORef ( IORef )
+
 -- | An environment, composed of bindings from variables to values
 type ValueCtx = Map.Map Variable Value
 
@@ -52,6 +54,7 @@ data Value
   | VFork
   | VChan ChannelEnd
   | VPack [KindedType] Value
+  | VAffineSender ChannelEnd (IORef Int)
 
 -- | A plain debugging representation. Program output goes through the
 -- 'Unparse' instance instead.
@@ -69,6 +72,7 @@ instance Show Value where
   show VFork            = "<fork>"
   show (VChan _)        = "<channel>"
   show (VPack _ vals)   = "<package " ++ show vals ++ ">"
+  show (VAffineSender _ _) = "<affine-sender>"
 
 -- | Build a function value from its clauses, capturing the environment. The
 -- environment is captured lazily, so a self- or mutually-recursive binding can
