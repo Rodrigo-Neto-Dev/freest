@@ -96,6 +96,64 @@ close (VChan c) = do
   C.writeChan (snd c) VUnit
   return VUnit
 
+ -- * Create a new affine channel: a plain receiver end and a sender end
+ -- carrying a shared, atomically-updated count of live senders (starts at 1).
+ affineChan :: IO (Value, Value)
+ affineChan = do
+   (chanL, chanR) <- chan
+   ref <- newIORef 1
+   return (VChan chanL, VAffineSender chanR ref)
+
+-- * affineChan returns (Value, Value), but VIO wraps IO Value
+-- a single value, not a pair of values directly returned by IO.
+-- This wraps it as a tuple value:
+ affineChan' :: IO Value
+ affineChan' = do
+   (rx, wx) <- affineChan
+   return $ VCons "(,)" [rx, wx]
+
+ -- * sendA: write `Just x` on the wire. The sender is not consumed at runtime
+ -- (only the type system threads it linearly); the same value is returned.
+ sendA :: Value -> Value -> IO Value
+ sendA x (VAffineSender c ref) = do
+   _ <- send (VCons "Just" [x]) c
+   return (VAffineSender c ref)
+
+ -- * cloneAS: atomically increment the shared count; both results share the
+ -- channel end and the counter.
+ cloneSender :: Value -> IO Value
+ cloneSender (VAffineSender c ref) = do
+   atomicModifyIORef' ref (\n -> (n + 1, ()))
+   return $ VCons "(,)" [VAffineSender c ref, VAffineSender c ref]
+
+-- * cloneAR: atomically increment the shared count; both results share the
+ -- channel end and the counter.
+cloneReceiver :: Value -> IO Value
+cloneReceiver (VChan readEnd) = do
+  readEnd' <- dupChan readEnd       -- independent cursor, same stream
+  return $ VCons "(,)" [VChan readEnd, VChan readEnd']
+
+
+ -- * drop: atomically decrement the shared count; the thread that observes it
+ -- hit zero writes the `Nothing` terminator. atomicModifyIORef' guarantees
+ -- exactly one caller sees 0, so exactly one Nothing is ever written.
+ dropSender :: Value -> IO Value
+ dropSender (VAffineSender c ref) = do
+   n <- atomicModifyIORef' ref (\k -> (k - 1, k - 1))
+   if n <= 0
+     then send (VCons "Nothing" []) c $> VUnit
+     else return VUnit
+
+ -- * receiveA: receive one message; it is already Just/Nothing-shaped (written
+ -- by sendA / dropSender), so just pair the payload with the continuation.
+ receiveA :: Value -> IO Value
+ receiveA (VChan c) = do
+   (v, c') <- receive c
+   case v of
+     VCons "Nothing" []  -> return $ VCons "Nothing" []
+     VCons "Just"   [x]  -> return $ VCons "Just" [VCons "(,)" [x, VChan c']]
+     other               -> error ("receiveA: malformed affine message: " ++ show other)
+
 builtins :: Map.Map String Value
 builtins = Map.fromList
   [
@@ -188,6 +246,13 @@ builtins = Map.fromList
   , ("close",         VBuiltin (VIO . close))
   , ("send_",         VBuiltin (\val -> VBuiltin (\(VChan c) -> VIO $ VUnit <$ send val c)))
   , ("receive_",      VBuiltin (\(VChan c) -> VIO $ receive c >>= \(val, c) -> return val))
+  -- * affine channels
+  , ("newA",          VBuiltin (\VUnit -> VIO affineChan'))
+  , ("sendA",         VBuiltin (\x -> VBuiltin (\c -> VIO $ sendA x c)))
+  , ("cloneAS",       VBuiltin (\c -> VIO $ cloneSender c))
+  , ("cloneAR",       VBuiltin (\c -> VIO $ cloneReceiver c) )
+  , ("drop",          VBuiltin (\c -> VIO $ dropSender c))
+  , ("receiveA",      VBuiltin (\c -> VIO $ receiveA c))
   -- * I/O
   -- ** Standard I/O
   -- *** stdin
