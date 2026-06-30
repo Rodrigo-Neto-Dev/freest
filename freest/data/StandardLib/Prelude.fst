@@ -404,23 +404,23 @@ parallel @a n thunk = repeat @() n (\(_ : ()) -> fork @a thunk)
 
 -- Affine Channels
 
-newA : forall (a : *T) . () -> (**?a, **!a)
-newA = undefined @(forall (a : *T) . () -> (**?a, **!a))
+newA : forall (a : *T) -> () -> (**?a, **!a)
+newA = undefined @(forall (a : *T) -> () -> (**?a, **!a))
 
-sendA : forall (a : *T) . a -> **!a 1-> **!a
-sendA = undefined @(forall (a : *T) . a -> **!a 1-> **!a)
+sendA : forall (a : *T) -> a -> **!a -1-> **!a
+sendA = undefined @(forall (a : *T) -> a -> **!a -1-> **!a)
 
-receiveA : forall (a : *T) . **?a 1-> Maybe (a, **?a)
-receiveA = undefined @(forall (a : *T) . **?a 1-> Maybe (a, **?a))
+receiveA : forall (a : *T) -> **?a -1-> Maybe (a, **?a)
+receiveA = undefined @(forall (a : *T) -> **?a -1-> Maybe (a, **?a))
 
-cloneAS : forall (a : *T) . **!a 1-> (**!a, **!a)
-cloneAS = undefined @(forall (a : *T) . **!a 1-> (**!a, **!a))
+cloneAS : forall (a : *T) -> **!a -1-> (**!a, **!a)
+cloneAS = undefined @(forall (a : *T) -> **!a -1-> (**!a, **!a))
 
-cloneAR : forall (a : *T) . **?a 1-> (**?a, **?a)
-cloneAR = undefined @(forall (a : *T) . **?a 1-> (**?a, **?a))
+cloneAR : forall (a : *T) -> **?a -1-> (**?a, **?a)
+cloneAR = undefined @(forall (a : *T) -> **?a -1-> (**?a, **?a))
 
-drop : forall (a : *T) . **!a 1-> ()
-drop = undefined @(forall (a : *T) . **!a 1-> ())
+drop : forall (a : *T) -> **!a -1-> ()
+drop = undefined @(forall (a : *T) -> **!a -1-> ())
 
 -- * I/O
 

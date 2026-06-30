@@ -44,7 +44,7 @@ data Token
   | TkDollar Span | TkPipeGT Span
   | TkPlus Span | TkPlusPlus Span | TkPlusDot Span
   | TkMinus Span | TkMinusDot Span
-  | TkStar Span | TkStarStar Span | TkStarDot Span
+  | TkStar Span | TkStarStar Span | TkStarStarBang Span | TkStarStarQuestion Span | TkStarDot Span
   | TkSlash Span | TkSlashDot Span
   | TkCaret Span | TkCaretCaret Span
   | TkCmp Span String
@@ -70,7 +70,7 @@ getText = \case
   TkUpperId _ t -> t
   TkQualifiedUpperId _ t -> t
   TkWildcard _ t -> t
-  -- Literals 
+  -- Literals
   TkIntLit _ t -> t
   TkFloatLit _ t -> t
   TkCharLit _ t -> t
@@ -81,7 +81,7 @@ getText = \case
 
 instance Located Token where
   getSpan :: Token -> Span
-  getSpan = \case 
+  getSpan = \case
     -- Identifiers
     TkLowerId s _ -> s
     TkLowerIdAt s _ -> s
@@ -270,4 +270,3 @@ instance Located Token where
     TkTopPrekind _ -> TkTopPrekind s
     TkSessionPrekind _ -> TkSessionPrekind s
     TkChannelPrekind _ -> TkChannelPrekind s
-
