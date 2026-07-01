@@ -23,14 +23,14 @@ module Syntax.Type.Internal
         , UnChoice
         , AppSemi
         , AppDual
+        , AffineSender
+        , AffineReceiver
         , AppTName
         , Tuple
         , List
         , Bool
         , AppDName
         , AppVar
-        , AffineSender
-        , AffineReceiver
         )
   , smartApp
   , Dual(..)
@@ -40,6 +40,8 @@ module Syntax.Type.Internal
   , isSemi
   , isAppSemi
   , isDual
+  , isAffineSender
+  , isAffineReceiver
   , isTName
   , isDName
   , isMsg
@@ -49,8 +51,6 @@ module Syntax.Type.Internal
   , isAppLinChoice
   , isAppQuant
   , isAppDName
-  , isAffineSender
-  , isAffineReceiver
   , fromVariable
   , existsMult
   )
@@ -302,6 +302,8 @@ instance Show (Type x) where
     -- Affine channel types
     AffineSender _ _ _ t   -> "**!" ++ show t
     AffineReceiver _ _ _ t -> "**?" ++ show t
+    AffineSenderOp _ _   -> "**!op"
+    AffineReceiverOp _ _ -> "**?op"
     -- Polymorphism
     AppQuant _ _ _ _ p K.Top m aks t -> "(" ++ showQuant p ++ " " ++ showAbs aks  ((if p == In then " -" ++ show m else "") ++ "-> ") t ++ ")"
     -- Higher-order

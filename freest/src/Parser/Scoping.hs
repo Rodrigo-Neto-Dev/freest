@@ -583,12 +583,12 @@ scopeType ctx = \case
     as' <- mapM freshInternal as
     ks' <- mapM (scopeKind ctx) ks
     T.Abs s (zip as' ks') <$> scopeType (fromTVarList as' `union` ctx) t
-  T.App s t ts ->
-    T.App s <$> scopeType ctx t <*> mapM (scopeType ctx) ts
-
   -- Affine Channels
   T.AffineSender s t -> T.AffineSender s <$> scopeType ctx t
   T.AffineReceiver s t -> T.AffineReceiver s <$> scopeType ctx t
+  
+  T.App s t ts ->
+    T.App s <$> scopeType ctx t <*> mapM (scopeType ctx) ts
 
 -- | Scope a type, universally quantifying any free variables it might have
 -- with a fresh kind inference variable.

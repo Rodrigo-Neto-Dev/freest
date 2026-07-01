@@ -112,6 +112,16 @@ synth ctx = \case
     Just k -> pure $ TK.fromVariable ObjLv a k
     Nothing -> do
       throwE (TypeVarOutOfScope s a)
+
+  -- Affine channel types
+  T.AffineSender s t -> do
+    (_, _, t') <- checkProper ctx t        -- payload must be a proper type
+    return $ TK.AffineSender s t'           -- result kind is 1C (built into the pattern)
+
+  T.AffineReceiver s t -> do
+    (_, _, t') <- checkProper ctx t
+    return $ TK.AffineReceiver s t'
+
   T.App s t ts -> do
     t' <- synth ctx t
     let k = TK.kindOf t'
@@ -132,15 +142,6 @@ synth ctx = \case
   T.Abs s aks t -> do
     let ctx' = Map.fromList (first Left <$> aks) `Map.union` ctx
     TK.Abs s aks <$> synth ctx' t
-
-  -- Affine channel types
-  T.AffineSender s t -> do
-    (_, _, t') <- checkProper ctx t        -- payload must be a proper type
-    return $ TK.AffineSender s t'           -- result kind is 1C (built into the pattern)
-
-  T.AffineReceiver s t -> do
-    (_, _, t') <- checkProper ctx t
-    return $ TK.AffineReceiver s t'
 
 -- | Check a type against a given kind.
 check :: KindCtx -> T.ScopedType -> Kind -> Validation TK.KindedType
