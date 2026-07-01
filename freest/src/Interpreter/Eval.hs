@@ -6,7 +6,8 @@ Maintainer  :  freest-lang@listas.ciencias.ulisboa.pt
 This module implements FreeST's interpreter.
 -}
 module Interpreter.Eval
-  ( evalModule
+  ( evalModule,
+  handleApplication
   ) where
 
 {-
@@ -20,7 +21,8 @@ TODO:
  -}
 
 import Control.Concurrent (forkIO)
-import Control.Exception (throwIO)
+import Control.Exception (throwIO, catch, SomeException)
+import Debug.Trace (trace)
 import Control.Monad (zipWithM, foldM)
 import Data.Bifunctor (first)
 import Data.Functor (($>), void)
@@ -194,32 +196,21 @@ handleApplication ctx (VClosure collected clauses cctx) args = do
 handleApplication _ (VBuiltin builtin) args =
   return $ foldl (\(VBuiltin func) arg -> func arg) (VBuiltin builtin) (termArgs args)
 handleApplication ctx VFork args = case termArgs args of
-  [fun] -> forkIO (void $ handleApplication ctx fun [Just VUnit]) $> VUnit
-  []    -> return VFork    -- only type/multiplicity applied so far
-  _     -> internalError "fork applied to too many arguments"
+  [fun] -> do
+    trace "[FORK] spawning thread" $ return ()
+    forkIO $ (do
+      trace "[FORK] thread started" $ return ()
+      res <- handleApplication ctx fun [Just VUnit]
+      case res of
+        VIO io -> void io
+        _      -> return ())
+      `catch` \e -> trace ("[FORK] thread EXCEPTION: " ++ show (e :: SomeException)) $ return ()
+    return VUnit
 
 -- | The term-level (value) arguments of an applied list; type and multiplicity
 -- applications carry no runtime value.
 termArgs :: [Maybe Value] -> [Value]
 termArgs = catMaybes
-{- handleApplication (global, local) (VSelect label) args =
-  case args of
-    [VChan chan] -> do
-      chan2 <- send (VLabel label) chan
-      return $ VChan chan2
-    _ -> internalError $ "Too many arguments applied to Select " ++ label ++ "! Type checking failed!" -}
-{- handleApplication _ VSendType args =
-  case args of
-    [VChan chan] -> do
-      chan2 <- send VUnit chan
-      return $ VChan chan2
-    _ -> internalError "Too many arguments applied to SendType! Type checking failed!" -}
-{- handleApplication _ VRecvType args =
-  case args of
-    [VChan chan] -> do
-      (_, chan2) <- receive chan
-      return $ VChan chan2
-    _ -> internalError "Too many arguments applied to ReceiveType! Type checking failed!" -}
 
 -- MAIN FUNCTIONS
 
@@ -267,8 +258,12 @@ eval ctx (E.Asc span exp typ) = do
 eval ctx (E.Let _ decls exp) = do
   letBindings <- collectLetDecls ctx decls
   eval (ctx `union` letBindings) exp
-eval ctx (E.Semi span exp1 exp2) =
-  eval ctx exp1 >> eval ctx exp2
+eval ctx (E.Semi span exp1 exp2) = do
+  res1 <- eval ctx exp1
+  case res1 of
+    VIO io -> void io
+    _      -> return ()
+  eval ctx exp2
 eval ctx (E.Case _ exp alternatives) = do
   val <- eval ctx exp
   -- a `case` is the one-column instance of the clause matcher (session effects,
@@ -286,102 +281,7 @@ eval _ (E.Channel _ _) = do
 eval _ (E.Select _ (B.Identifier _ iden)) = do
   let (Just (VBuiltin selectBuiltin)) = Data.Map.lookup "select" builtins
   return $ selectBuiltin (VLabel iden)
-  {- return $ VSelect iden -}
 eval _ (E.SendType _ _) =
   return $ fromJust $ Data.Map.lookup "sendType" builtins
-  {- return VSendType -}
 eval _ (E.ReceiveType _) =
   return $ fromJust $ Data.Map.lookup "receiveType" builtins
-  {- return VRecvType -}
-
--- OLD DEFINITIONS
-
-{- -- Here is where the function application is done.
--- Because of how the parser parses function applications (f a b c d => f [a, b, c, d] even if f only takes one arg)
--- is necessary to repeat the evaluation until [arg] is empty.
--- TODO: context is a mess must check if it is correct, don't like that there is a lot of repetition
-consumeAllArgs :: (ValueCtx, ValueCtx) -> Value -> [Value] -> IO Value
-consumeAllArgs (global, local) (VClosure pats exp local_ctx) args = case sequence (doPatternMatching pats args []) of
-  Just patternMatching ->
-    if length pats == length args then eval (global, patternMatching ++ local_ctx ++ local) exp
-    else if length pats < length args then do val <- (eval (global, patternMatching ++ local_ctx ++ local) exp)
-                                              consumeAllArgs (global, patternMatching ++ local_ctx ++ local) val (drop (length pats) args)
-    else return $ VClosure (drop (length args) pats) exp (patternMatching ++ local_ctx)
-  -- TODO: use freeST error handling to tell the user that that pattern mathcing was not exhautive
-  Nothing -> undefined
-consumeAllArgs (global, local) (VFun patExps) args = do
-  labels <- mapM receiveLabel $ getInternalChoiceChannels (fst $ head patExps) args
-  case chooseRhs patExps args labels of
-    Just (rhs, matched, pats) ->
-      do (exp, whereDecls) <- (case rhs of E.UnguardedRHS exp whereDecls -> return (exp, whereDecls)
-                                           E.GuardedRHS predExps whereDecls -> do guardsCtx <- chooseGuard (global, matched) predExps
-                                                                                  return (guardsCtx, whereDecls))
-         let whereCtx = (case whereDecls of Just letDecls -> resolveLetDecls global letDecls
-                                            Nothing -> return [])
-         whereCtx2 <- whereCtx
-         if length pats == length args then eval (global, matched++whereCtx2) exp
-         else if length pats < length args then do val <- eval (global, matched++whereCtx2) exp
-                                                   consumeAllArgs (global, matched++whereCtx2) val (drop (length pats) args)
-         else return $ VClosure (drop (length args) pats) exp (matched++whereCtx2)
-    -- TODO: use freeST error handling to tell the user that that pattern mathcing was not exhautive
-    Nothing -> undefined
--- Is there builtins that take no arguments?
-consumeAllArgs ctx (VBuiltin builtin) [] = return $ builtin VUnit
-consumeAllArgs ctx (VBuiltin builtin) [arg] = return $ builtin arg
-consumeAllArgs ctx (VBuiltin builtin) (arg:args) = consumeAllArgs ctx (builtin arg) args
-
-consumeAllArgs ctx (VCons str vals) args = return $ VCons str (vals++args) -}
-
-{- -- TODO: think of a better name for this function
-resolveLetDecls :: ValueCtx -> [LetDecl] -> IO [(String, Value)]
-resolveLetDecls _ [] = return []
-resolveLetDecls global ((E.ValDef pat rhs):letDecls) = do (exp, whereDecls) <- case rhs of
-    E.UnguardedRHS exp whereDecls -> return (exp, whereDecls)
-    E.GuardedRHS predExps whereDecls -> do 
-      guardsCtx <- chooseGuard (global, []) predExps
-      return (guardsCtx, whereDecls)
-  whereCtx2 <- (case whereDecls of Just letDecls -> resolveLetDecls global letDecls
-                                   Nothing -> return [])
-  val <- eval (global, whereCtx2) exp
-  letDeclsCtx <- resolveLetDecls global letDecls
-  return $ case sequence $ doPatternMatching [pat] [val] [] of
-    Just matched -> matched ++ letDeclsCtx
-  -- TODO: use freeST error handling to tell the user that that pattern mathcing was not exhautive
-    Nothing -> undefined
-
-resolveLetDecls global ((E.FnDef var levelRhss):letDecls) = do
-  letDeclsCtx <- resolveLetDecls global letDecls
-  return $ (B.external var, VFun (map (\(levels, rhs) -> (map (\(B.ExpLevel pat) -> pat) (filterTypesFromLevels levels), rhs)) levelRhss)) : letDeclsCtx -}
-
--- TODO: create a resolveWhereDecls for more readable code (ValueCtx -> Maybe [LetDecl] -> [(String, Value)])
-
-{- -- TODO: DELETE, refactor to use map and filter?
--- do i need to do Nothing : doPatternMatching pats args or can i just return Nothing
-doPatternMatching :: [E.Pat] -> [Value] -> [String] -> [Maybe (String, Value)]
-doPatternMatching [] [] _ = []
-doPatternMatching pats [] _ = []
-doPatternMatching [] args _ = []
-doPatternMatching (pat:pats) (arg:args) labels = case pat of
-  E.WildPat _ _ -> doPatternMatching pats args labels
-  E.VarPat _ var -> Just (B.external var, arg) : doPatternMatching pats args labels
-  E.DConsPat _ (B.Identifier _ patIden) consPats -> case arg of
-    VCons iden consArgs -> if iden == patIden then doPatternMatching consPats consArgs labels ++ doPatternMatching pats args labels else Nothing : doPatternMatching pats args labels
-    VChan chan -> if patIden == head labels then Just (B.external $ (\[E.VarPat _ var] -> var) consPats, VChan chan) : doPatternMatching pats args (tail labels) else Nothing : doPatternMatching pats args (tail labels)
-  -- E.TuplePat _ tupPats -> doPatternMatching tupPats ((\(VTuple tupVals) -> tupVals) arg) ++ doPatternMatching pats args
-  E.IntPat _ n -> if (\(VInt n) -> n) arg == n then doPatternMatching pats args labels else Nothing : doPatternMatching pats args labels
-  E.FloatPat _ n -> if (\(VFloat n) -> n) arg == n then doPatternMatching pats args labels else Nothing : doPatternMatching pats args labels
-  E.CharPat _ c -> if (\(VChar c) -> c) arg == c then doPatternMatching pats args labels else Nothing : doPatternMatching pats args labels
-  -- E.StringPat _ str -> if (\(VString str) -> str) arg == str then doPatternMatching pats args else Nothing : doPatternMatching pats args
-  E.AsPat _ var pat2 -> Just (B.external var, arg) : doPatternMatching [pat2] [arg] labels ++ doPatternMatching pats args labels -}
-
-{- -- necessary to find out if there is an internal choice in the pattern matching to pre receive the label
-getInternalChoiceChannels :: [E.Pat] -> [Value] -> [ChannelEnd]
-getInternalChoiceChannels [] [] = []
-getInternalChoiceChannels pats [] = []
-getInternalChoiceChannels [] args = []
-getInternalChoiceChannels (pat:pats) (arg:args) = case pat of
-  E.DConsPat _ (B.Identifier _ patIden) patCons -> case arg of
-    VCons _ consArgs -> getInternalChoiceChannels patCons consArgs ++ getInternalChoiceChannels pats args
-    VChan chan -> chan : getInternalChoiceChannels pats args
-  _  -> getInternalChoiceChannels pats args
--}

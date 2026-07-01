@@ -1,10 +1,10 @@
 -- Well-formedness of affine channel types
 
 -- VALID
-case (**!Int) : *T
+case **!Int : *T
 
 -- VALID
-case (**?Int) :*T
+case **?Int :*T
 
 -- VALID: affine sender of affine sender
 case (**!(**!Int)) :*T

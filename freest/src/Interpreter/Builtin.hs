@@ -24,6 +24,9 @@ import Data.Functor ( ($>) )
 import qualified Data.Map as Map
 import Data.IORef ( newIORef, atomicModifyIORef' )
 import GHC.Float ( Floating(log1mexp, log1p, expm1, log1pexp) )
+import Debug.Trace (trace)
+import Control.Exception (catch, SomeException)
+import Debug.Trace (trace)
 
 import Interpreter.Value ( Value(..), ChannelEnd )
 import Parser.Unparser ( unparse )
@@ -110,15 +113,21 @@ affineChan = do
 -- This wraps it as a tuple value:
 affineChan' :: IO Value
 affineChan' = do
+  trace "[NEWA] creating affine channel" $ return ()
   (rx, wx) <- affineChan
+  trace ("[NEWA] rx=" ++ show (case rx of VChan _ -> "VChan"; _ -> "OTHER") ++ " wx=" ++ show (case wx of VAffineSender _ _ -> "VAffineSender"; _ -> "OTHER")) $ return ()
   return $ VCons "(,)" [rx, wx]
 
 -- sendA: write `Just x` on the wire. The sender is not consumed at runtime
 -- (only the type system threads it linearly); the same value is returned.
 sendA :: Value -> Value -> IO Value
-sendA x (VAffineSender c ref) = do
+sendA x chan = do
+  trace ("[SENDA] called with x=" ++ show x ++ " chan=" ++ show (case chan of VAffineSender _ _ -> "VAffineSender"; VChan _ -> "VChan"; VIO _ -> "VIO"; _ -> "OTHER")) $ return ()
+  let c = case chan of
+            VAffineSender c' _ -> c'
+            _ -> error $ "sendA: not an affine sender, got: " ++ show chan
   _ <- send (VCons "Just" [x]) c
-  return (VAffineSender c ref)
+  trace ("[SENDA] done writing x=" ++ show x) $ return chan
 
 -- cloneAS: atomically increment the shared count; both results share the
 -- channel end and the counter.
@@ -139,21 +148,32 @@ cloneReceiver (VChan readEnd) = do
 -- hit zero writes the `Nothing` terminator. atomicModifyIORef' guarantees
 -- exactly one caller sees 0, so exactly one Nothing is ever written.
 dropSender :: Value -> IO Value
-dropSender (VAffineSender c ref) = do
-  n <- atomicModifyIORef' ref (\k -> (k - 1, k - 1))
-  if n <= 0
-    then send (VCons "Nothing" []) c $> VUnit
-    else return VUnit
+dropSender v = do
+  trace ("[DROP] called with " ++ show (case v of VAffineSender _ _ -> "VAffineSender"; _ -> "OTHER")) $ return ()
+  case v of
+    VAffineSender c ref -> do
+      n <- atomicModifyIORef' ref (\k -> (k - 1, k - 1))
+      trace ("[DROP] count now " ++ show n) $ return ()
+      if n <= 0
+        then trace "[DROP] sending Nothing" $ send (VCons "Nothing" []) c $> VUnit
+        else trace "[DROP] not sending" $ return VUnit
+    _ -> error $ "dropSender: not a VAffineSender, got: " ++ show v
+
 
 -- receiveA: receive one message; it is already Just/Nothing-shaped (written
 -- by sendA / dropSender), so just pair the payload with the continuation.
 receiveA :: Value -> IO Value
 receiveA (VChan c) = do
+  trace "[RECV] waiting" $ return ()
   (v, c') <- receive c
+  trace ("[RECV] got " ++ show v) $ return ()
   case v of
     VCons "Nothing" []  -> return $ VCons "NothingL" []
     VCons "Just"   [x]  -> return $ VCons "JustL" [VCons "(,)" [x, VChan c']]
     other               -> error ("receiveA: malformed affine message: " ++ show other)
+receiveA other = do
+  trace ("[RECV] ERROR: not a VChan, got " ++ show other) $ return ()
+  error $ "receiveA: expected VChan, got: " ++ show other
 
 builtins :: Map.Map String Value
 builtins = Map.fromList

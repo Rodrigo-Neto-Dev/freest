@@ -53,6 +53,10 @@ isWhnf = \case
   T.AppSemi _ T.AppVar{}               _ -> True
   T.AppSemi _ (T.AppDual _ T.AppVar{}) _ -> True
   T.AppSemi _ T.UnChoice{}             _ -> True -- Extra
+  -- Affine channel types in sequential composition
+  T.AppSemi _ T.AffineSender{}         _ -> True
+  T.AppSemi _ T.AffineReceiver{}       _ -> True
+  -- Affine channel types themselves
   T.AffineSender{} -> True
   T.AffineReceiver{} -> True
   -- Otherwise
@@ -71,6 +75,9 @@ reduce tdecls = \case
   T.AppSemi s1 (T.AppSemi s2 t@T.AppMessage{} u) v           -> T.AppSemi s1 t (T.AppSemi s2 u v)
   T.AppSemi s1 (T.AppSemi s2 t@T.AppVar{} u) v               -> T.AppSemi s1 t (T.AppSemi s2 u v)
   T.AppSemi s1 (T.AppSemi s2 t@(T.AppDual _ T.AppVar{}) u) v -> T.AppSemi s1 t (T.AppSemi s2 u v)
+  -- R-SAssoc for affine channel types
+  T.AppSemi s1 (T.AppSemi s2 t@T.AffineSender{} u) v         -> T.AppSemi s1 t (T.AppSemi s2 u v)
+  T.AppSemi s1 (T.AppSemi s2 t@T.AffineReceiver{} u) v       -> T.AppSemi s1 t (T.AppSemi s2 u v)
     -- R-SChoiceDist
   T.AppSemi _ (T.AppLinChoice s p lts) u ->
     T.AppLinChoice s p (map (second \t -> T.AppSemi (getSpan t) t u) lts)
@@ -116,10 +123,6 @@ reduce tdecls = \case
   T.App s (T.Void _ (K.Arrow _ _ k)) _ -> T.Void s k
     -- R-AppL
   T.App s f ts -> T.App s (reduce tdecls f) ts
-
-  -- Affine channels (already in whnf)
-  t@T.AffineSender{} -> t
-  t@T.AffineReceiver{} -> t
 
   -- 4. Should not happen
   t -> internalError $ "Trying to reduce " ++ show t ++ ", a " ++ (if isWhnf t then "" else " non ") ++  "whnf"
