@@ -23,8 +23,6 @@ module Syntax.Type.Internal
         , UnChoice
         , AppSemi
         , AppDual
-        , AffineSender
-        , AffineReceiver
         , AppTName
         , Tuple
         , List
@@ -97,8 +95,8 @@ data Type x
   | Semi Span (XType x)
   | Dual Span (XType x)
   -- Affine channels
-  | AffineSenderOp Span (XType x)
-  | AffineReceiverOp Span (XType x)
+  | AffineSender Span (XType x) (Type x)
+  | AffineReceiver Span (XType x) (Type x)
   --   Equations
   | TName Span (XType x) Identifier
   | DName Span (XType x) Identifier
@@ -169,13 +167,7 @@ pattern AppDual :: Span -> XType x -> XType x -> Type x -> Type x
 pattern AppDual s x1 x2 t <- App s x1 (Dual _ x2) [t]
   where AppDual s x1 x2 t  = App s x1 (Dual s x2) [t]
 
-pattern AffineSender :: Span -> XType x -> XType x -> Type x -> Type x
-pattern AffineSender s x1 x2 t <- App s x1 (AffineSenderOp _ x2) [t]
-  where AffineSender s x1 x2 t  = App s x1 (AffineSenderOp s x2) [t]
 
-pattern AffineReceiver :: Span -> XType x -> XType x -> Type x -> Type x
-pattern AffineReceiver s x1 x2 t <- App s x1 (AffineReceiverOp _ x2) [t]
-  where AffineReceiver s x1 x2 t  = App s x1 (AffineReceiverOp s x2) [t]
 
 pattern AppTName :: Span -> XType x -> XType x -> Identifier -> [Type x] -> Type x
 pattern AppTName s x1 x2 i ts <- (\case TName s x1 i            -> App s x1 (TName s x1 i) []
@@ -300,10 +292,8 @@ instance Show (Type x) where
       ++ "}"
       where showField (l, t) = show l ++ ": " ++ show t
     -- Affine channel types
-    AffineSender _ _ _ t   -> "**!" ++ show t
-    AffineReceiver _ _ _ t -> "**?" ++ show t
-    AffineSenderOp _ _   -> "**!op"
-    AffineReceiverOp _ _ -> "**?op"
+    AffineSender _ _ t   -> "**!" ++ show t
+    AffineReceiver _ _ t -> "**?" ++ show t
     -- Polymorphism
     AppQuant _ _ _ _ p K.Top m aks t -> "(" ++ showQuant p ++ " " ++ showAbs aks  ((if p == In then " -" ++ show m else "") ++ "-> ") t ++ ")"
     -- Higher-order
@@ -345,6 +335,9 @@ instance Congruence (Type x) where
     (End _ _ p1) (End _ _ p2) -> p1 == p2
     (Message _ _ m1 p1) (Message _ _ m2 p2) -> m1 == m2 && p1 == p2
     (Choice _ _ m1 p1 is1) (Choice _ _ m2 p2 is2) -> m1 == m2 && p1 == p2 && is1 == is2
+  -- Affine channel types
+    (AffineSender _ _ t1) (AffineSender _ _ t2) -> congruent m t1 t2
+    (AffineReceiver _ _ t1) (AffineReceiver _ _ t2) -> congruent m t1 t2
   -- Higher-order
     (Var _ _ _ v1) (Var _ _ _ v2) ->
       v1 == v2 ||              -- free variables
@@ -380,8 +373,8 @@ instance Located (Type x) where
     Semi s _         -> s
     Dual s _         -> s
     -- Affine channel types
-    AffineSenderOp s _   -> s
-    AffineReceiverOp s _ -> s
+    AffineSender s _ _   -> s
+    AffineReceiver s _ _ -> s
     -- Polymorphism
     Quant s _ _ _ _ -> s
     ForallM s _ _ _ _ -> s
@@ -411,8 +404,8 @@ instance Located (Type x) where
     Semi _ x          -> Semi s x
     Dual _ x          -> Dual s x
     -- Affine channel types
-    AffineSenderOp _ t   -> AffineSenderOp s t
-    AffineReceiverOp _ t -> AffineReceiverOp s t
+    AffineSender _ x t   -> AffineSender s x t
+    AffineReceiver _ x t -> AffineReceiver s x t
     -- Higher-order
     Var _ x xv a       -> Var s x xv a
     Abs _ x aks t      -> Abs s x aks t

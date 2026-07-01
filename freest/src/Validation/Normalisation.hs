@@ -53,6 +53,8 @@ isWhnf = \case
   T.AppSemi _ T.AppVar{}               _ -> True
   T.AppSemi _ (T.AppDual _ T.AppVar{}) _ -> True
   T.AppSemi _ T.UnChoice{}             _ -> True -- Extra
+  T.AffineSender{} -> True
+  T.AffineReceiver{} -> True
   -- Otherwise
   _ -> False
 
@@ -114,6 +116,10 @@ reduce tdecls = \case
   T.App s (T.Void _ (K.Arrow _ _ k)) _ -> T.Void s k
     -- R-AppL
   T.App s f ts -> T.App s (reduce tdecls f) ts
+
+  -- Affine channels (already in whnf)
+  t@T.AffineSender{} -> t
+  t@T.AffineReceiver{} -> t
 
   -- 4. Should not happen
   t -> internalError $ "Trying to reduce " ++ show t ++ ", a " ++ (if isWhnf t then "" else " non ") ++  "whnf"

@@ -215,12 +215,12 @@ pattern Bool s <- T.Bool s _
   where Bool s = T.Bool s void
 
 pattern AffineSender :: Unkinded x => Span -> T.Type x -> T.Type x
-pattern AffineSender s t <- T.AffineSender s _ _ t
-  where AffineSender s t = T.AffineSender s void void t
+pattern AffineSender s t <- T.AffineSender s _ t
+  where AffineSender s t = T.AffineSender s void t
 
 pattern AffineReceiver :: Unkinded x => Span -> T.Type x -> T.Type x
-pattern AffineReceiver s t <- T.AffineReceiver s _ _ t
-  where AffineReceiver s t = T.AffineReceiver s void void t
+pattern AffineReceiver s t <- T.AffineReceiver s _ t
+  where AffineReceiver s t = T.AffineReceiver s void t
 
 fromVariable :: Unkinded x => Variable -> T.Type x
 fromVariable a = T.Var (varSpan a) void ObjLv a

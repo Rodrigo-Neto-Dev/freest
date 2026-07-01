@@ -35,6 +35,9 @@ maybe : forall (a : *T) (b : *T) -> b -> (a -> b) -> Maybe a -> b
 maybe @a @b n _ Nothing  = n
 maybe @a @b _ f (Just x) = f x
 
+type MaybeL : 1T -> 1T
+data MaybeL a = NothingL | JustL a
+
 type Either : *T -> *T -> *T
 data Either a b = Left a | Right b
 
@@ -407,8 +410,8 @@ parallel @a n thunk = repeat @() n (\(_ : ()) -> fork @a thunk)
 newA : forall (a : 1T) -> () -> (**?a, **!a)
 newA = undefined @(forall (a : 1T) -> () -> (**?a, **!a))
 
-receiveA : forall (a : 1T) -> **?a -1-> (a, **?a)
-receiveA = undefined @(forall (a : 1T) -> **?a -1-> (a, **?a))
+receiveA : forall (a : 1T) -> **?a -1-> MaybeL (a, **?a)
+receiveA = undefined @(forall (a : 1T) -> **?a -1-> MaybeL (a, **?a))
 
 cloneAS : forall (a : 1T) -> **!a -1-> (**!a, **!a)
 cloneAS = undefined @(forall (a : 1T) -> **!a -1-> (**!a, **!a))

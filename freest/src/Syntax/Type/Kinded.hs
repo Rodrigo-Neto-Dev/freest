@@ -151,12 +151,12 @@ pattern Abs s aks t <- T.Abs s _ aks t
           where k = foldr (K.Arrow s . snd ) (kindOf t) aks
 
 pattern AffineSender :: Span -> KindedType -> KindedType
-pattern AffineSender s t <- T.AffineSender s _ _ t
-  where AffineSender s t = T.AffineSender s (K.lc s) (K.lc s) t
+pattern AffineSender s t <- T.AffineSender s _ t
+  where AffineSender s t = T.AffineSender s (K.lc s) t
 
 pattern AffineReceiver :: Span -> KindedType -> KindedType
-pattern AffineReceiver s t <- T.AffineReceiver s _ _ t
-  where AffineReceiver s t = T.AffineReceiver s (K.lc s) (K.lc s) t
+pattern AffineReceiver s t <- T.AffineReceiver s _ t
+  where AffineReceiver s t = T.AffineReceiver s (K.lc s) t
 
 pattern App :: Span -> KindedType -> [KindedType] -> KindedType
 pattern App s t ts <- T.App s _ t ts
@@ -167,8 +167,6 @@ pattern App s t ts <- T.App s _ t ts
             AppLinChoice s p lts -> AppLinChoice s p lts
             AppSemi s t1 t2 -> AppSemi s t1 t2
             AppDual s t -> AppDual s t
-            AffineSender s t -> AffineSender s t
-            AffineReceiver s t -> AffineReceiver s t
             Tuple s ts -> Tuple s ts
             List s t -> List s t
             t -> t
@@ -280,8 +278,8 @@ kindOf = \case
   T.Choice _ k _ _ _ -> k
   T.Var _ k _ _ -> k
   T.Abs _ k _ _ -> k
-  T.AffineSender _ k _ _ -> k
-  T.AffineReceiver _ k _ _ -> k
+  T.AffineSender _ k _ -> k
+  T.AffineReceiver _ k _ -> k
   T.App _ k _ _ -> k
   T.TName _ k _ -> k
   T.DName _ k _ -> k

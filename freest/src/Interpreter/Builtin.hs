@@ -151,8 +151,8 @@ receiveA :: Value -> IO Value
 receiveA (VChan c) = do
   (v, c') <- receive c
   case v of
-    VCons "Nothing" []  -> return $ VCons "Nothing" []
-    VCons "Just"   [x]  -> return $ VCons "Just" [VCons "(,)" [x, VChan c']]
+    VCons "Nothing" []  -> return $ VCons "NothingL" []
+    VCons "Just"   [x]  -> return $ VCons "JustL" [VCons "(,)" [x, VChan c']]
     other               -> error ("receiveA: malformed affine message: " ++ show other)
 
 builtins :: Map.Map String Value

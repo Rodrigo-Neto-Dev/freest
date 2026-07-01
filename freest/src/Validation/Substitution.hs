@@ -33,6 +33,8 @@ freeTypeVars = \case
   T.Abs _ _ aks t -> freeTypeVars t Set.\\ Set.fromList (map fst aks)
   T.Var _ _ _ a -> Set.singleton a
   T.App _ _ t ts  -> Set.unions (freeTypeVars t : map freeTypeVars ts)
+  T.AffineSender _ _ t -> freeTypeVars t
+  T.AffineReceiver _ _ t -> freeTypeVars t
   _               -> Set.empty
 
 freeMultVars :: TK.KindedType -> Set.Set Variable
@@ -45,6 +47,8 @@ freeMultVars = \case
   TK.Var _ k _ _ -> allMultVarsKind k
   TK.Abs s aks t -> freeMultVars t
   TK.App s t ts  -> Set.unions (freeMultVars t : map freeMultVars ts)
+  T.AffineSender _ _ t -> freeMultVars t
+  T.AffineReceiver _ _ t -> freeMultVars t
   _ -> Set.empty
 
 -- | The set of all variables ocurring in a type.
@@ -53,6 +57,8 @@ allTypeVars = \case
   T.Abs _ _ aks t -> allTypeVars t
   T.Var _ _ _ a -> Set.singleton a
   T.App _ _ t ts  -> Set.unions (allTypeVars t : map allTypeVars ts)
+  T.AffineSender _ _ t -> allTypeVars t
+  T.AffineReceiver _ _ t -> allTypeVars t
   _               -> Set.empty
 
 
@@ -90,6 +96,8 @@ subs a u = \case
     where  fvu = freeTypeVars u
   -- Applications
   TK.App s f ts -> TK.smartApp s (subs a u f) (fmap (subs a u) ts)
+  T.AffineSender s k t' -> T.AffineSender s k (subs a u t')
+  T.AffineReceiver s k t' -> T.AffineReceiver s k (subs a u t')
   t -> t
 
 -- Polyadic substituion (written @[as -> us] t@). Considers only the shortest
@@ -139,6 +147,8 @@ subsMultType lv φ m = \case
   -- T.Message s k m p
   TK.Abs s aks t -> TK.Abs s (map (second $ subsMultKind lv φ m) aks) (subsMultType lv φ m t)
   TK.App s t ts  -> TK.App s (subsMultType lv φ m t) (map (subsMultType lv φ m) ts)
+  T.AffineSender s k t' -> T.AffineSender s (subsMultKind lv φ m k) (subsMultType lv φ m t')
+  T.AffineReceiver s k t' -> T.AffineReceiver s (subsMultKind lv φ m k) (subsMultType lv φ m t')
   t -> t
 
 subsMultKind :: VarLv -> Variable -> K.Multiplicity -> K.Kind -> K.Kind
@@ -162,6 +172,8 @@ allMultVarsType = \case
   TK.Var _ k _ _ -> allMultVarsKind k
   TK.Abs _ aks t -> Set.unions (map (allMultVarsKind . snd) aks) `Set.union` allMultVarsType t
   TK.App _ t ts -> allMultVarsType t `Set.union` Set.unions (map allMultVarsType ts)
+  T.AffineSender _ _ t -> allMultVarsType t
+  T.AffineReceiver _ _ t -> allMultVarsType t
   _ -> Set.empty
 
 allMultVarsKind :: K.Kind -> Set.Set Variable
