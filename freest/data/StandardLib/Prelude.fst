@@ -404,26 +404,33 @@ repeat @a n thunk =
 parallel : forall (a : *T) -> Int -> (() -> a) -> ()
 parallel @a n thunk = repeat @() n (\(_ : ()) -> fork @a thunk)
 
+-- Affine Channels (capability wrappers over session protocols).
+-- The wrappers always carry a session protocol; sendA/receiveA expose
+-- the head step and rewrap the continuation, while cloneAS/cloneAR/drop
+-- operate on the wrapper as an opaque constructor.
 
--- Affine Channels
+newA : forall (s : 1S) -> () -> (**?(Dual s), **!s)
+newA = undefined @(forall (s : 1S) -> () -> (**?(Dual s), **!s))
 
-newA : forall (a : 1T) -> () -> (**?a, **!a)
-newA = undefined @(forall (a : 1T) -> () -> (**?a, **!a))
+receiveA : forall (a : 1T) (s : 1S) -> **?(?a ; s) -1-> MaybeL (a, **?s)
+receiveA = undefined @(forall (a : 1T) (s : 1S) -> **?(?a ; s) -1-> MaybeL (a, **?s))
 
-receiveA : forall (a : 1T) -> **?a -1-> MaybeL (a, **?a)
-receiveA = undefined @(forall (a : 1T) -> **?a -1-> MaybeL (a, **?a))
+sendA : forall (a : *T) (s : 1S) -> a -> **!(!a ; s) -1-> **!s
+sendA = undefined @(forall (a : *T) (s : 1S) -> a -> **!(!a ; s) -1-> **!s)
 
-cloneAS : forall (a : 1T) -> **!a -1-> (**!a, **!a)
-cloneAS = undefined @(forall (a : 1T) -> **!a -1-> (**!a, **!a))
+cloneAS : forall (s : 1S) -> **!s -1-> (**!s, **!s)
+cloneAS = undefined @(forall (s : 1S) -> **!s -1-> (**!s, **!s))
 
-cloneAR : forall (a : 1T) -> **?a -1-> (**?a, **?a)
-cloneAR = undefined @(forall (a : 1T) -> **?a -1-> (**?a, **?a))
+cloneAR : forall (s : 1S) -> **?s -1-> (**?s, **?s)
+cloneAR = undefined @(forall (s : 1S) -> **?s -1-> (**?s, **?s))
 
-sendA : forall (a : *T) -> a -> **!a -1-> **!a
-sendA = undefined @(forall (a : *T) -> a -> **!a -1-> **!a)
+drop : forall (s : 1S) -> **!s -1-> ()
+drop = undefined @(forall (s : 1S) -> **!s -1-> ())
 
-drop : forall (a : *T) -> **!a -1-> ()
-drop = undefined @(forall (a : *T) -> **!a -1-> ())
+-- | The receiver-side analogue of 'drop': consumes an affine receiver
+-- capability once the protocol's 'Wait' terminator has been reached.
+waitA : forall (s : 1S) -> **?s -1-> ()
+waitA = undefined @(forall (s : 1S) -> **?s -1-> ())
 
 -- * I/O
 
