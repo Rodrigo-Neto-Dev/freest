@@ -22,7 +22,6 @@ TODO:
 
 import Control.Concurrent (forkIO)
 import Control.Exception (throwIO, catch, SomeException)
-import Debug.Trace (trace)
 import Control.Monad (zipWithM, foldM)
 import Data.Bifunctor (first)
 import Data.Functor (($>), void)
@@ -197,14 +196,12 @@ handleApplication _ (VBuiltin builtin) args =
   return $ foldl (\(VBuiltin func) arg -> func arg) (VBuiltin builtin) (termArgs args)
 handleApplication ctx VFork args = case termArgs args of
   [fun] -> do
-    trace "[FORK] spawning thread" $ return ()
     forkIO $ (do
-      trace "[FORK] thread started" $ return ()
       res <- handleApplication ctx fun [Just VUnit]
       case res of
         VIO io -> void io
         _      -> return ())
-      `catch` \e -> trace ("[FORK] thread EXCEPTION: " ++ show (e :: SomeException)) $ return ()
+      `catch` \e -> errorWithoutStackTrace (show (e :: SomeException))
     return VUnit
 
 -- | The term-level (value) arguments of an applied list; type and multiplicity
