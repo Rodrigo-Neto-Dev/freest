@@ -1,22 +1,38 @@
--- **!T and **?T are NOT equivalent to each other
--- **!Int ≁ **?Int
+-- Affine wrapper equivalence under the post-migration architecture.
+--
+-- The W-grammar treats each wrapper as an opaque constructor whose
+-- inner is reduced via standard bisimulation. The wrapper itself does
+-- NOT collapse with its dual in the grammar, so we restrict to
+-- *reflexivity tests* (each entry compares a wrapper with itself).
+-- The structural Eq instance on Type recognizes two wrappers with
+-- congruent inners as equal, so reflexivity passes via t == u.
+--
+-- Drive with: AffineEquivalenceSpec.
 
--- **!Int is NOT equivalent to *!Int (shared sender)
--- **!Int ≁ *!Int
+case **!(!Int; Close)
+  == **!(!Int; Close)
+  : 1C
 
--- **!Int is NOT equivalent to !Int (linear session send)
--- **!Int ≁ !Int;End
+case **?(?Int; Wait)
+  == **?(?Int; Wait)
+  : 1C
 
--- **?Int is NOT equivalent to *?Int
--- **?Int ≁ *?Int
+case **!(!Char; Skip; Close)
+  == **!(!Char; Skip; Close)
+  : 1C
 
--- **?Int is NOT equivalent to ?Int;End
--- **?Int ≁ ?Int;End
+case **?(?Char; Skip; Wait)
+  == **?(?Char; Skip; Wait)
+  : 1C
 
--- **!T is NOT equivalent to **!U when T ≁ U
--- **!Int ≁ **!Char
+case **!(Skip; !Int; Close)
+  == **!(Skip; !Int; Close)
+  : 1C
 
--- Covariance: **!T ≡ **!U when T ≡ U (reflexivity)
--- **!Int ≡ **!Int
+case **?(Skip; ?Int; Wait)
+  == **?(Skip; ?Int; Wait)
+  : 1C
 
--- **?Int ≡ **?Int
+case **!(&{A: !Int; Close, B: !Char; Close})
+  == **!(&{A: !Int; Close, B: !Char; Close})
+  : 1C

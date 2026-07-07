@@ -1,15 +1,28 @@
--- clone is not defined for receiver side (negative tests)
--- These must be ill-formed / ill-kinded
+-- Affine wrappers whose inner is NOT a session-kind protocol.
+--
+-- The wrapper requires its inner to be kind 1S; these inners are *T
+-- (proper unrestricted), functions, or compositions with a non-session
+-- operand, so the kind check must REJECT. No kind annotation.
+--
+-- Drive with: AffineKindingInvalidSpec (errorsAreSuccesses).
+--
+-- Note: unrestricted shared channels (`*!Int : *C`, `*?Int : *C`) ARE
+-- accepted as the inner of an affine wrapper because of subkinding
+-- (`*C <: 1S`: `Un <: Lin` holds via the polymorphic Mult subsort rule
+-- `_ <: Lin{} = True`, and `Channel <: Session` holds via PK subsort).
+-- So such cases are NOT placed here.
 
--- Receiver side cannot appear as clone argument
--- clone : **?Int -> (**?Int, **?Int)   -- ill-typed: clone only defined for **!a
+case **!Int
 
--- Affine sender cannot be used as unrestricted (*C)
--- **!Int cannot inhabit *C
+case **?Float
 
--- Affine types are not session types
--- **!Int is not of kind 1S — cannot appear where 1S expected
--- **?Int is not of kind 1S
+case **?(Int, Char)
 
--- Affine receiver is not a shared channel
--- **?Int ≠ *?Int
+case **!((Int -> Char); Close)
+
+case **!(Int -> Char)
+
+case **!(Skip; Int)
+
+case **?(Skip; Float)
+

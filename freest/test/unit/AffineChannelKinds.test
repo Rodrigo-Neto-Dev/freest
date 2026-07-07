@@ -1,28 +1,24 @@
--- Affine sender is a linear type (1T)
+-- Affine channel kinds under the post-migration architecture.
+--
+-- The wrappers (**! / **?) are real constructors whose inner must be a
+-- session-kind (1S) protocol. The wrapper itself has kind 1C (linear
+-- channel). Each line below asserts that the wrapper-over-session is
+-- well-kinded at kind 1C.
+--
+-- Drive with: AffineKindingValidSpec (errorsAreFailures).
 
-case **!Int : 1T
+case **!(!Int; Close) : 1C
 
-case **?Int : 1T
+case **!(!Char; Skip; Close) : 1C
 
-case **!Char : 1T
+case **!(!Int; !Char; Close) : 1C
 
-case **?Char : 1T
+case **!(Skip; !Int; Close) : 1C
 
-case **!() : 1T
+case **?(?Int; Wait) : 1C
 
-case **?(Int, Char) : 1T
+case **?(?Char; Skip; Wait) : 1C
 
--- Affine channel carrying a session type payload
-case **!(!Int;Skip) : 1T
+case **?(?Int; ?Char; Wait) : 1C
 
--- Affine sender of affine sender (nested)
-case **!(**!Int) : 1T
-
--- Affine channel of unrestricted type
-case **!Int : 1T
-
--- Affine channel of linear function
-case **!(Int 1-> Char) : 1T
-
--- Affine sender is NOT unrestricted
--- (no case X : *T for **!Int — it must not be well-kinded as *T)
+case **?(Skip; ?Int; Wait) : 1C
