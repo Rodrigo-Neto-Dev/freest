@@ -1,23 +1,29 @@
 module SingleProducerTermination where
 
+-- Three-message protocol. The writer sends 1, 2, 3 and drops; the reader
+-- consumes each with the literal JustL pattern and prints each value, and
+-- the third receive's continuation '**?Wait' is bound to 'r3' so we can
+-- terminate it explicitly via 'waitA' rather than (a) attempting another
+-- 'receiveA' on a Wait-typed channel, or (b) discarding via '_'.
 main : ()
 main =
-  let (s, r) = newA in
+  -- Prelude newA signature: tuple is (receiver, sender).
+  let (r, s) = newA @(!Int; !Int; !Int; Close) () in
   let s1 = sendA 1 s in
   let s2 = sendA 2 s1 in
-  drop (sendA 3 s2);
+  let s3 = sendA 3 s2 in
+  drop s3;
   case receiveA r of
-    Nothing -> ()
-    Just (x, r1) ->
+    NothingL    -> ()
+    JustL (x, r1) ->
       print x;
       case receiveA r1 of
-        Nothing -> ()
-        Just (y, r2) ->
+        NothingL    -> ()
+        JustL (y, r2) ->
           print y;
           case receiveA r2 of
-            Nothing -> ()
-            Just (z, r3) ->
+            NothingL    -> ()
+            JustL (z, r3) ->
               print z;
-              case receiveA r3 of
-                Nothing -> print "done"
-                Just (_, _) -> ()
+              let () = waitA r3 in
+              print "done"

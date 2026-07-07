@@ -1,23 +1,37 @@
 module InterleavingSumCheck where
 
--- Order nondeterministic; verify sum == 15
-sumAll : **?Int 1-> Int -> Int
-sumAll r acc =
-  case receiveA r of
-    Nothing -> acc
-    Just (x, r') -> sumAll r' (acc + x)
+-- Three-message writer protocol, with the sender cloned three ways. Each
+-- forked producer sends its own int and drops; the reader sums 1+5+9 = 15
+-- (regardless of interleaving).
+--
+-- Migration: avoid helper-functions that take a linear 'recv' alongside an
+-- unrestricted Int accumulator (the linearity checker rejects the body as
+-- "unrestricted function consuming a linear var"). Inline the receive/sum
+-- into main; each JustL arm binds the linear continuation as 'r_i' and
+-- the terminal Wait continuation ('r_i') is consumed by 'waitA'.
+type Three : 1S
+type Three = !Int ; !Int ; !Int ; Close
 
-producer : Int -> **!Int 1-> ()
-producer x s =
-  drop (sendA x s)
+producer : Int -> **!Three -1-> ()
+producer x s = drop (sendA x s)
 
 main : ()
 main =
-  let (s, r)   = newA in
-  let (s1, s2) = cloneAS s in
+  -- Prelude newA signature: tuple is (receiver, sender).
+  let (r, s)    = newA @Three () in
+  let (s1, s2)  = cloneAS s in
   let (s2a, s2b) = cloneAS s2 in
-  fork (producer 1 s1);
-  fork (producer 5 s2a);
-  fork (producer 9 s2b);
-  let total = sumAll r 0 in
-  print total
+  fork @() (\_ -1-> producer 1 s1);
+  fork @() (\_ -1-> producer 5 s2a);
+  fork @() (\_ -1-> producer 9 s2b);
+  case receiveA r of
+    NothingL    -> print 0
+    JustL (x, r1) ->
+      case receiveA r1 of
+        NothingL    -> print x
+        JustL (y, r2) ->
+          case receiveA r2 of
+            NothingL    -> print (x + y)
+            JustL (z, r3) ->
+              let () = waitA r3 in
+              print (x + y + z)
