@@ -1,14 +1,19 @@
-module ReceiverUsedDuplication where
+module ReceiverDuplication where
 
-sumInts : **?Int 1-> Int
-sumInts c = case receiveA c of
-  Nothing     -> 0
-  Just (n, c) -> n + sumInts c
+-- Error: 'rx' is used twice in body without cloning first.
+type One : 1S
+type One = !Int ; Close
+
+sumInts : **?(?Int ; Wait) -1-> Int
+sumInts r =
+  case receiveA r of
+    NothingL -> 0
+    JustL (n, _) -> n
 
 main : ()
 main =
-  let (rx, wx) = newA @Int () in
-  drop wx ;
+  let (rx, wx) = newA @One () in
+  drop wx;
   let _ = sumInts rx in
-  let _ = sumInts rx in  -- Error: rx not in scope
-  ()
+  let _ = sumInts rx in
+  print 0

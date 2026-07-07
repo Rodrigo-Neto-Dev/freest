@@ -1,7 +1,12 @@
 module SenderAsLinearSession where
 
--- Error: **!Int is not a session type; send expects !Int;S
+-- Error: 'send' expects a linear session channel ('!a; S'); an
+-- affine sender wrapper ('**!(!Int; Close)') is not the same kind
+-- of value.
+type One : 1S
+type One = !Int ; Close
+
 main : ()
 main =
-  let (rx, wx) = newA @Int () in
-  send 1 wx   -- Error: type mismatch, send expects linear session channel
+  let (rx, wx) = newA @One () in
+  send 1 wx   -- type error

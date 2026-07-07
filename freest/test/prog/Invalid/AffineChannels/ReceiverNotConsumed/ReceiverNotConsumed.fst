@@ -1,8 +1,10 @@
-module ReceiverNotConsumed
+module ReceiverNotConsumed where
 
--- Error: rx goes out of scope without being consumed
+type One : 1S
+type One = !Int ; Close
+
+-- Error: 'rx' goes out of scope without being consumed.
 main : ()
 main =
-  let (rx, wx) = newA @Int () in
+  let (rx, wx) = newA @One () in
   drop wx
-  -- rx not consumed: error

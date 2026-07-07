@@ -1,7 +1,11 @@
-module RecursiveReuseWithoutClone where
+module ImplicitReuse where
 
--- Error: wx implicitly reused across recursive call
-loop : **!Int 1-> ()
+-- Error: 'c' is consumed by 'sendA', so the recursive call's reuse
+-- of 'c' is out of scope.
+type One : 1S
+type One = !Int ; Close
+
+loop : **!One -1-> ()
 loop c =
-  sendA 0 c ;
-  loop c   -- Error: c not in scope (consumed by first sendA iteration)
+  let _ = sendA 0 c in
+  loop c   -- error
