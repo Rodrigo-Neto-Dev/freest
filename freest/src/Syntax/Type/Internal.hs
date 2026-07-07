@@ -259,6 +259,8 @@ instance Dual (Type x) where
   dual (End s x p) = End s x (dual p)
   dual (Message s x m p) = Message s x m (dual p)
   dual (Choice s x m p ids) = Choice s x m (dual p) ids
+  dual (AffineSender s x p) = AffineReceiver s x (dual p)
+  dual (AffineReceiver s x p) = AffineSender s x (dual p)
   dual t@Skip{} = t
   dual t@Void{} = t
 

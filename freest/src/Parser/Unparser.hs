@@ -137,6 +137,8 @@ instance Unparse (T.Type x) where
       where
         l = bracket (fragment t) LeftAssoc semiRator
         r = bracket (fragment u) RightAssoc semiRator
+    T.AffineSender _ _ t -> (maxRator, "**!" ++ unparse t)
+    T.AffineReceiver _ _ t -> (maxRator, "**?" ++ unparse t)
     T.App s x t ts -> (appRator, l ++ " " ++ r)
       where 
         l = bracket (fragment (if length ts == 1 then t 

@@ -113,13 +113,14 @@ synth ctx = \case
     Nothing -> do
       throwE (TypeVarOutOfScope s a)
 
-  -- Affine channel types
+  -- Affine channel types. The wrapper is a capability that always wraps a
+  -- session protocol, never a bare payload type.
   T.AffineSender s t -> do
-    (_, _, t') <- checkProper ctx t        -- payload must be a proper type
+    (_, _, t') <- checkSession ctx t        -- inner must be a session protocol
     return $ TK.AffineSender s t'           -- result kind is 1C (built into the pattern)
 
   T.AffineReceiver s t -> do
-    (_, _, t') <- checkProper ctx t
+    (_, _, t') <- checkSession ctx t
     return $ TK.AffineReceiver s t'
 
   T.App s t ts -> do

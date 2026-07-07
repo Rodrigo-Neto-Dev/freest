@@ -75,6 +75,14 @@ word' = \case
   -- W-Seq
   T.AppSemi _ t u -> do
     liftM2 (++) (word t) (word u)
+  -- W-AffineSender
+  T.AffineSender _ t -> do
+    w <- word t
+    getNonterminal $ Map.fromList [("AffineSender", w ++ [bottom])]
+  -- W-AffineReceiver
+  T.AffineReceiver _ t -> do
+    w <- word t
+    getNonterminal $ Map.fromList [("AffineReceiver", w ++ [bottom])]
   -- W-DualVar, Dual (α T1 ··· Tm) , m >= 0
   T.AppDual s (T.AppVar _ a _ _ ts) -> do
     words <- mapM word ts
