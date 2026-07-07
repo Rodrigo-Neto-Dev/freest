@@ -161,10 +161,10 @@ synth tdecls ddecls kctx tctx = \case
         return (E.App s f (ExpLevel e' : as''), t, tctx'')
       (arg : _) ->
         throwE (UnexpectedArg (getSpan arg) 1 (ExpLevel Nothing) arg)
-  E.App s h as    -> do
-    (h', t, tctx') <- synth tdecls ddecls kctx tctx h
-    (as', u, tctx'') <- checkArgsQL 0 s tdecls ddecls kctx tctx' t as
-    return (E.App s h' as', u, tctx'')
+  E.App s h as ->
+    case synthAffineBuiltin tdecls ddecls kctx tctx s h as of
+      Just builtin -> builtin
+      Nothing -> synthRegularApp tdecls ddecls kctx tctx s h as
   e@(E.Abs s ps m e') -> synthAbs kctx tctx ps
     where
       synthAbs kctxi tctxi = \case
@@ -368,9 +368,15 @@ check tdecls ddecls kctx tctx e t = case e of
         return (E.App s h (ExpLevel e'' : args''), tctx'')
       (arg : _) ->
         throwE (UnexpectedArg (getSpan arg) 1 (ExpLevel Nothing) arg)
-  E.App s h args -> do
-    (h', t', tctx') <- synth tdecls ddecls kctx tctx h
-    checkApp tdecls ddecls kctx e s h' t' tctx' args t
+  E.App s h args ->
+    case synthAffineBuiltin tdecls ddecls kctx tctx s h args of
+      Just builtin -> do
+        (e', t', tctx') <- builtin
+        checkEquivTypes tdecls ddecls (Left e) t t'
+        return (e', tctx')
+      Nothing -> do
+        (h', t', tctx') <- synth tdecls ddecls kctx tctx h
+        checkApp tdecls ddecls kctx e s h' t' tctx' args t
   E.Abs s pars m e' -> do
     checkFun tdecls ddecls kctx tctx (Right e) pars' (Just m) (E.UnguardedRHS e' Nothing) t >>= \case
       (E.UnguardedRHS e'' Nothing, tctx') -> return (E.Abs s pars m e'', tctx')
@@ -543,6 +549,156 @@ checkInstPrekind t = go (T.kindOf t)
     go (K.Var _ _) _ = internalError "unhandled kind variable"
     go _ (K.Var _ _) = internalError "unhandled kind variable"
     go _ _ = return ()
+
+-- | Synthesize an ordinary application.
+synthRegularApp :: D.KindedTypeDecls
+                -> D.KindedDataDecls
+                -> KindCtx
+                -> TypeCtx
+                -> Span
+                -> E.KindedExp
+                -> [Level E.KindedExp T.KindedType K.Multiplicity]
+                -> Validation (E.KindedExp, T.KindedType, TypeCtx)
+synthRegularApp tdecls ddecls kctx tctx s h as = do
+  (h', t, tctx') <- synth tdecls ddecls kctx tctx h
+  (as', u, tctx'') <- checkArgsQL 0 s tdecls ddecls kctx tctx' t as
+  return (E.App s h' as', u, tctx'')
+
+-- | Affine builtins are capability operations over wrapped protocols. Each
+-- wrapper always carries a session protocol; the protocol's head step is
+-- exposed (and rewrapped) in @Validation.Expose@. Typing only inspects the
+-- surrounding expression forms and delegates to 'Expose' for the protocol
+-- bookkeeping. This keeps the capability layer thin: the session layer never
+-- sees a plain payload, and the capability layer never sees the wire details.
+synthAffineBuiltin :: D.KindedTypeDecls
+                   -> D.KindedDataDecls
+                   -> KindCtx
+                   -> TypeCtx
+                   -> Span
+                   -> E.KindedExp
+                   -> [Level E.KindedExp T.KindedType K.Multiplicity]
+                   -> Maybe (Validation (E.KindedExp, T.KindedType, TypeCtx))
+synthAffineBuiltin tdecls ddecls kctx tctx s h args =
+  case h of
+    E.Var _ x -> case external x of
+      "newA"     -> newA
+      "sendA"    -> sendA
+      "receiveA" -> receiveA
+      "cloneAS"  -> cloneAS
+      "cloneAR"  -> cloneAR
+      "drop"     -> drop
+      "waitA"    -> waitA
+      _          -> Nothing
+    _ -> Nothing
+  where
+    -- newA : forall (s : 1S) -> () -> (**?(Dual s), **!s)
+    -- Already vetted by the kinding of the type argument 'protocol' (it must
+    -- be a session), so no extra guard is needed here.
+    --
+    -- Canonical-by-construction: this is the EARLIEST point at which a
+    -- non-canonical protocol could enter an affine wrapper. We delegate to
+    -- 'Expose.canonicaliseProtocol' for both the protocol itself and its
+    -- dual. 'canonicaliseProtocol' reuses the WHNF + cycle-detection
+    -- machinery from 'Validation.Normalisation' (via 'normWith') and adds a
+    -- single extra step: recursive descent through 'AppSemi' tails. This
+    -- eliminates every 'Dual' / partially-reduced 'AppSemi' / 'AppTName'
+    -- under the semicolon tail. The result: the 'AffineSender' and
+    -- 'AffineReceiver' wrapped here ALREADY satisfy the cap-layer invariant,
+    -- with NO need for callers of 'affineInput' / 'affineOutput' to
+    -- re-normalise.
+    newA = case partitionLevels args of
+      ([unit], [protocol], []) -> Just do
+        (unit', tctx') <- check tdecls ddecls kctx tctx unit (T.Tuple (getSpan unit) [])
+        let canonicalProtocol = Expose.canonicaliseProtocol tdecls protocol
+            dualP    = Expose.canonicaliseProtocol tdecls (T.AppDual (getSpan canonicalProtocol) canonicalProtocol)
+            receiver = T.AffineReceiver (getSpan canonicalProtocol) dualP
+            sender   = T.AffineSender (getSpan canonicalProtocol) canonicalProtocol
+        return (E.App s h (replaceExpArgs args [unit']), T.Tuple s [receiver, sender], tctx')
+      _ -> Nothing
+
+    -- sendA : forall (a : *T) (s : 1S) . a -> **!(!a ; s) -1-> **!s
+    sendA = case partitionLevels args of
+      ([payload, sender], _, _) -> Just do
+        (payload', payloadTy, tctx')  <- synth tdecls ddecls kctx tctx payload
+        (sender',  senderTy,  tctx'') <- synth tdecls ddecls kctx tctx' sender
+        (expectedPayloadTy, senderContTy) <- Expose.affineOutput tdecls sender senderTy
+        checkEquivTypes tdecls ddecls (Left payload) expectedPayloadTy payloadTy
+        return (E.App s h (replaceExpArgs args [payload', sender']), senderContTy, tctx'')
+      _ -> Nothing
+
+    -- receiveA : forall (a : 1T) (s : 1S) . **?(?a ; s) -1-> MaybeL (a, **?s)
+    receiveA = case partitionLevels args of
+      ([receiver], _, _) -> Just do
+        (receiver', receiverTy, tctx') <- synth tdecls ddecls kctx tctx receiver
+        (payloadTy, receiverContTy)    <- Expose.affineInput tdecls (Right receiver) receiverTy
+        resultTy <- maybeL s (T.Tuple (spanFromTo payloadTy receiverContTy) [payloadTy, receiverContTy])
+        return (E.App s h (replaceExpArgs args [receiver']), resultTy, tctx')
+      _ -> Nothing
+
+    -- cloneAS : forall (s : 1S) . **!s -1-> (**!s, **!s)
+    cloneAS = case partitionLevels args of
+      ([sender], _, _) -> Just do
+        (sender', senderTy, tctx') <- synth tdecls ddecls kctx tctx sender
+        case senderTy of
+          T.AffineSender{} ->
+            return (E.App s h (replaceExpArgs args [sender']), T.Tuple s [senderTy, senderTy], tctx')
+          _ -> throwE (TypeMismatch (getSpan sender)
+                        (T.AffineSender (getSpan sender) (T.End (getSpan sender) T.Out))
+                        senderTy
+                        (Left sender))
+      _ -> Nothing
+
+    -- cloneAR : forall (s : 1S) . **?s -1-> (**?s, **?s)
+    cloneAR = case partitionLevels args of
+      ([receiver], _, _) -> Just do
+        (receiver', receiverTy, tctx') <- synth tdecls ddecls kctx tctx receiver
+        case receiverTy of
+          T.AffineReceiver{} ->
+            return (E.App s h (replaceExpArgs args [receiver']), T.Tuple s [receiverTy, receiverTy], tctx')
+          _ -> throwE (TypeMismatch (getSpan receiver)
+                        (T.AffineReceiver (getSpan receiver) (T.End (getSpan receiver) T.In))
+                        receiverTy
+                        (Left receiver))
+      _ -> Nothing
+
+    -- drop : forall (s : 1S) . **!s -1-> ()
+    drop = case partitionLevels args of
+      ([sender], _, _) -> Just do
+        (sender', senderTy, tctx') <- synth tdecls ddecls kctx tctx sender
+        case senderTy of
+          T.AffineSender{} ->
+            return (E.App s h (replaceExpArgs args [sender']), T.Tuple s [], tctx')
+          _ -> throwE (TypeMismatch (getSpan sender)
+                        (T.AffineSender (getSpan sender) (T.End (getSpan sender) T.Out))
+                        senderTy
+                        (Left sender))
+      _ -> Nothing
+
+    -- waitA : forall (s : 1S) . **?s -1-> ()
+    -- The receiver-side analogue of 'drop': consumes an affine receiver
+    -- capability once the wrapped protocol is at 'Wait'. Delegates to
+    -- Expose.affineWait so the capability layer never inspects raw 'End's.
+    waitA = case partitionLevels args of
+      ([receiver], _, _) -> Just do
+        (receiver', receiverTy, tctx') <- synth tdecls ddecls kctx tctx receiver
+        Expose.affineWait tdecls (Right receiver) receiverTy
+        return (E.App s h (replaceExpArgs args [receiver']), T.Tuple s [], tctx')
+      _ -> Nothing
+
+    maybeL resultSpan t = do
+      let maybeLId = mkId "MaybeL" resultSpan
+      case kctx Map.!? Right maybeLId of
+        Just k -> return $ T.AppDName resultSpan k maybeLId [t]
+        Nothing -> throwE (TypeConsOutOfScope resultSpan maybeLId)
+
+    replaceExpArgs = replace
+      where
+        replace [] [] = []
+        replace (ExpLevel _ : as) (e : es) = ExpLevel e : replace as es
+        replace (TypeLevel t : as) es = TypeLevel t : replace as es
+        replace (MultLevel m : as) es = MultLevel m : replace as es
+        replace _ _ = internalError "affine builtin argument mismatch"
+
 
 -- | Check a (synthesised) head applied to a possibly empty
 -- argument list against the expected type.
