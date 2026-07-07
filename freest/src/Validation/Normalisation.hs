@@ -13,6 +13,7 @@ module Validation.Normalisation
   ( isWhnf
   , reduce
   , normalise
+  , normWith
   , tNameRedex
   )
 where
@@ -53,10 +54,8 @@ isWhnf = \case
   T.AppSemi _ T.AppVar{}               _ -> True
   T.AppSemi _ (T.AppDual _ T.AppVar{}) _ -> True
   T.AppSemi _ T.UnChoice{}             _ -> True -- Extra
-  -- Affine channel types in sequential composition
-  T.AppSemi _ T.AffineSender{}         _ -> True
-  T.AppSemi _ T.AffineReceiver{}       _ -> True
-  -- Affine channel types themselves
+  -- Affine channel types are capabilities; treat them as opaque constructors
+  -- so reduction never reaches into their inner protocol.
   T.AffineSender{} -> True
   T.AffineReceiver{} -> True
   -- Otherwise
@@ -75,9 +74,6 @@ reduce tdecls = \case
   T.AppSemi s1 (T.AppSemi s2 t@T.AppMessage{} u) v           -> T.AppSemi s1 t (T.AppSemi s2 u v)
   T.AppSemi s1 (T.AppSemi s2 t@T.AppVar{} u) v               -> T.AppSemi s1 t (T.AppSemi s2 u v)
   T.AppSemi s1 (T.AppSemi s2 t@(T.AppDual _ T.AppVar{}) u) v -> T.AppSemi s1 t (T.AppSemi s2 u v)
-  -- R-SAssoc for affine channel types
-  T.AppSemi s1 (T.AppSemi s2 t@T.AffineSender{} u) v         -> T.AppSemi s1 t (T.AppSemi s2 u v)
-  T.AppSemi s1 (T.AppSemi s2 t@T.AffineReceiver{} u) v       -> T.AppSemi s1 t (T.AppSemi s2 u v)
     -- R-SChoiceDist
   T.AppSemi _ (T.AppLinChoice s p lts) u ->
     T.AppLinChoice s p (map (second \t -> T.AppSemi (getSpan t) t u) lts)
@@ -127,24 +123,30 @@ reduce tdecls = \case
   -- 4. Should not happen
   t -> internalError $ "Trying to reduce " ++ show t ++ ", a " ++ (if isWhnf t then "" else " non ") ++  "whnf"
 
+-- | Weak-head-normal reduction with an EXPLICIT visited set for µ-cycle
+-- detection. Exposed so the capability layer
+-- ('Validation.Expose.canonicaliseProtocol') can thread the visited set
+-- across its own recursion, thereby reusing the cycle-detection machinery
+-- verbatim instead of duplicating it.
+--
+-- 'normalise' is simply 'normWith tdecls Set.empty'.
+normWith :: D.KindedTypeDecls -> Set.Set T.KindedType -> T.KindedType -> T.KindedType
+normWith tdecls visited t
+  -- N-Whnf
+  | isWhnf t = t
+  -- N-Visited
+  | reappears = T.Void (getSpan t) (T.kindOf t)
+  -- N-NotVisited + N-NoMuRedex
+  | otherwise = normWith tdecls visited' (reduce tdecls t)
+  where
+    u = tNameRedex t -- u is Maybe (µ∗F)
+    reappears = maybe False   (`Set.member` visited) u
+    visited'  = maybe visited (`Set.insert` visited) u
+
 -- | The weak head normal form of a type. Big-step semantics. A total function for
 -- well-formed types.
 normalise :: D.KindedTypeDecls -> T.KindedType -> T.KindedType
-normalise tdecls = norm Set.empty
-  where
-    norm :: Set.Set T.KindedType -> T.KindedType -> T.KindedType
-    norm visited t
-      -- N-Whnf
-      | isWhnf t = t
-      -- N-Visited
-      | reappears = T.Void (getSpan t) (T.kindOf t)
-      -- N-NotVisited + N-NoMuRedex
-      | otherwise = norm visited' (reduce tdecls t)
-      where
-        u = tNameRedex t -- u is Maybe (µ∗F)
-        reappears = maybe False   (`Set.member` visited) u
-        visited'  = maybe visited (`Set.insert` visited) u
-        span = getSpan t
+normalise tdecls = normWith tdecls Set.empty
 
 -- | The 𝜇-redex extraction. Partial function; hence the Maybe
 tNameRedex :: T.KindedType -> Maybe T.KindedType
