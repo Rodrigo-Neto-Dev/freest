@@ -18,9 +18,10 @@ import ProgSpecUtils
 import Control.Concurrent ( forkIO, newEmptyMVar, putMVar, takeMVar )
 import Control.Monad ( void )
 import Data.List ( intercalate, isPrefixOf, dropWhileEnd )
-import System.Environment ( getExecutablePath )
+import GHC.IO.Encoding ( utf8 )
+import System.Environment ( getExecutablePath, setEnv )
 import System.Exit ( ExitCode(..) )
-import System.IO ( Handle, hIsEOF, hGetChar )
+import System.IO ( Handle, hIsEOF, hGetChar, hSetEncoding, stderr, stdout )
 import System.Process
 import System.Timeout
 import Test.Hspec
@@ -86,8 +87,20 @@ testOne file = do
 
 -- | Child-process entry point (invoked as @prog --run-one <file>@): interpret a
 -- single program and exit with its status, which the parent reads back.
+--
+-- Sets UTF-8 on stdout/stderr so that the parent can capture compiler
+-- diagnostic messages on any host (e.g. Windows, where the default ANSI
+-- codepage cannot encode U+2013, used in 'Syntax.Base.Show' spans).
 runOne :: FilePath -> IO ()
-runOne file = runFreeST defaultRunOpts{filePath = Just file}
+runOne file = do
+  -- Pin a UTF-8 codepage so 'show' for 'Span' (which contains an '–' /
+  -- U+2013 between start and end positions) round-trips unaltered through
+  -- the parent's I/O capture.
+  setEnv "LANG" "C.UTF-8"
+  setEnv "LC_ALL" "C.UTF-8"
+  hSetEncoding stdout utf8
+  hSetEncoding stderr utf8
+  runFreeST defaultRunOpts{filePath = Just file}
 
 -- | Read a handle to EOF (so the child never blocks on a full pipe), retaining
 -- only the first 'outputCap' characters so the parent stays memory-bounded even
