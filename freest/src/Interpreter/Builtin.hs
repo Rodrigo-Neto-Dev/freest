@@ -268,12 +268,23 @@ builtins = Map.fromList
   , ("send_",         VBuiltin (\val -> VBuiltin (\(VChan c) -> VIO $ VUnit <$ send val c)))
   , ("receive_",      VBuiltin (\(VChan c) -> VIO $ receive c >>= \(val, c) -> return val))
   -- * affine channels
-  , ("newA",          VBuiltin (\VUnit -> VIO affineChan'))
+  -- '()' is parsed/evaluated as 'VCons "()" []' (empty-tuple constructor),
+  -- NOT as 'VUnit'. The newA unit arg must therefore be matched with '_';
+  -- otherwise GHC's runtime fires 'Non-exhaustive patterns in lambda' on
+  -- every 'newA @T ()' call site.
+  , ("newA",          VBuiltin (\_    -> VIO affineChan'))
   , ("sendA",         VBuiltin (\x -> VBuiltin (\c -> VIO $ sendA x c)))
   , ("cloneAS",       VBuiltin (\c -> VIO $ cloneSender c))
   , ("cloneAR",       VBuiltin (\c -> VIO $ cloneReceiver c) )
   , ("drop",          VBuiltin (\c -> VIO $ dropSender c))
   , ("receiveA",      VBuiltin (\c -> VIO $ receiveA c))
+  -- waitA: receiver-side acknowledgement that the affine-receiver protocol
+  -- has reached its 'Wait' terminator. At runtime this is a logical
+  -- acknowledgement — the channel has already been drained by the time the
+  -- 'NothingL' case fires (remember, 'drop' on the last living sender writes
+  -- the 'Nothing' sentinel). We accept any value shape and return VUnit,
+  -- mirroring the newA permissive pattern.
+  , ("waitA",         VBuiltin (\_ -> VIO (return (VCons "()" []))))
   -- * I/O
   -- ** Standard I/O
   -- *** stdin

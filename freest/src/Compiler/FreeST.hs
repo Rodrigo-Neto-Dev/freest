@@ -23,7 +23,7 @@ import Options.Applicative ( execParser )
 import Prelude hiding ( lookup )
 import System.Exit ( exitSuccess, exitFailure )
 
-import System.IO (hFlush, stdout, stderr)
+
 
 -- | The entry point of the FreeST compiler. Parses the command line options
 -- and runs the compiler pipeline or else calls the REPL.
@@ -38,25 +38,20 @@ runFreeST RunOpts{filePath = Nothing} =
   putStrLn (version ++ "\n" ++ noModuleLoaded) >>
   exitSuccess
 runFreeST RunOpts{filePath = Just programPath, implicitPrelude = ip} = do
-  putStrLn "DEBUG: runFreeST entered" >> hFlush stdout
   loadSilent ip programPath >>= \case
-    Nothing -> putStrLn "DEBUG: loadSilent failed" >> hFlush stdout >> exitFailure
+    Nothing -> exitFailure
     Just (src, _, _, _, _, modl) -> do
-      putStrLn "DEBUG: loadSilent succeeded" >> hFlush stdout
       catch
         (do
-          putStrLn "DEBUG: about to evalModule" >> hFlush stdout
           vctx <- evalModule emptyValueCtx modl
-          putStrLn "DEBUG: evalModule done" >> hFlush stdout
           let mMain = find (\(var, _) -> external var == "main") (Map.toList vctx)
           case mMain of
             Just (_, mainVal) -> do
-              putStrLn "DEBUG: calling main" >> hFlush stdout
               res <- handleApplication emptyValueCtx mainVal []
-              putStrLn ("DEBUG: main returned, res type=" ++ case res of VIO _ -> "VIO"; _ -> "other") >> hFlush stdout
               case res of
                 VIO io -> void io
                 _      -> return ()
-            Nothing -> putStrLn "DEBUG: main not found" >> hFlush stdout
+            Nothing -> return ()
           exitSuccess)
         (\e -> printException src e >> exitFailure)
+
